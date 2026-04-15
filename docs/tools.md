@@ -4,7 +4,7 @@
 - Perplexity — meklēšana, valodas dainize13199
 - ElevenLabs — balss     dainize 
 - Gamma -- pages  dainize
-  - DeeVid AI  -- image, text             dainize
+-  DeeVid AI  -- image, text             dainize
 - X.com                   dainize
 
 -
