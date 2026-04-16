@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alise — Seno Valodu Lasītāja</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Alise</h1>
+      <p class="subtitle">Seno valodu lasījumu aģents<br>
+        <span class="langs">Sengrieķu · Senebreju · Latviešu</span>
+      </p>
+    </header>
+
+    <section class="card">
+      <label class="file-label" id="fileLabel">
+        <input type="file" id="fileInput" accept=".txt,.pdf" />
+        <span id="fileName">Izvēlies TXT vai PDF failu</span>
+      </label>
+
+      <button id="readBtn" disabled>▶ Lasīt</button>
+
+      <div id="status" class="status hidden"></div>
+
+      <audio id="audioPlayer" controls class="hidden"></audio>
+    </section>
+
+    <footer>
+      <small>AL&amp;BL Readings · lingua.id.lv · Powered by ElevenLabs</small>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
