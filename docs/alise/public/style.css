@@ -1,0 +1,143 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Georgia', serif;
+  background: #1a1a2e;
+  color: #e8e0d0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+main {
+  width: 100%;
+  max-width: 540px;
+  padding: 2rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+h1 {
+  font-size: 3.5rem;
+  letter-spacing: 0.15em;
+  color: #c9a84c;
+  text-shadow: 0 0 20px rgba(201, 168, 76, 0.4);
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #a09080;
+  line-height: 1.6;
+}
+
+.langs {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  color: #7a9080;
+}
+
+.card {
+  background: #16213e;
+  border: 1px solid #2a2a4a;
+  border-radius: 12px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+/* Faila ievade */
+input[type="file"] {
+  display: none;
+}
+
+.file-label {
+  display: block;
+  border: 2px dashed #3a3a6a;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.file-label:hover {
+  border-color: #c9a84c;
+  background: rgba(201, 168, 76, 0.05);
+}
+
+.file-label.has-file {
+  border-color: #4a9a6a;
+  background: rgba(74, 154, 106, 0.08);
+}
+
+#fileName {
+  font-size: 0.9rem;
+  color: #a09080;
+}
+
+/* Poga */
+button {
+  background: #c9a84c;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  padding: 0.85rem 1.5rem;
+  font-size: 1.05rem;
+  font-family: 'Georgia', serif;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  font-weight: bold;
+}
+
+button:hover:not(:disabled) {
+  background: #e0bc60;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  background: #3a3a4a;
+  color: #6a6a7a;
+  cursor: not-allowed;
+}
+
+button.loading {
+  background: #4a4a6a;
+  color: #a0a0c0;
+  cursor: wait;
+}
+
+/* Statuss */
+.status {
+  font-size: 0.9rem;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.status.info { background: rgba(74, 114, 200, 0.15); color: #7aacf0; }
+.status.error { background: rgba(200, 74, 74, 0.15); color: #f07a7a; }
+.status.success { background: rgba(74, 154, 106, 0.15); color: #7acf9a; }
+.hidden { display: none; }
+
+audio {
+  width: 100%;
+  border-radius: 6px;
+}
+
+footer {
+  text-align: center;
+  margin-top: 2rem;
+  color: #4a4a5a;
+  font-size: 0.78rem;
+}
