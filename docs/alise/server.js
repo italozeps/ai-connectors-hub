@@ -34,6 +34,9 @@ function detectLanguage(text) {
   // Latviešu specifiskās rakstzīmes
   if (/[āčēģīķļņšūž]/i.test(sample)) return 'lv';
 
+  // Ivrits (hebreju raksts)
+  if (/[\u0590-\u05FF\uFB1D-\uFB4F]/.test(sample)) return 'he';
+
   // Vācu
   if (/[äöüß]/i.test(sample)) return 'de';
 
@@ -50,6 +53,38 @@ function detectLanguage(text) {
   if (/[àèéìíîòóùú]/i.test(sample)) return 'it';
 
   return 'en';
+}
+
+// Google Cloud TTS (latviešu un ivrits)
+const GOOGLE_TTS_VOICES = {
+  lv: { languageCode: 'lv-LV', name: 'lv-LV-Standard-A' },
+  he: { languageCode: 'he-IL', name: 'he-IL-Standard-A' },
+};
+
+async function textToSpeechGoogle(text, lang) {
+  const apiKey = process.env.GOOGLE_TTS_API_KEY;
+  const voice = GOOGLE_TTS_VOICES[lang];
+
+  const response = await fetch(
+    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text },
+        voice: { languageCode: voice.languageCode, name: voice.name },
+        audioConfig: { audioEncoding: 'MP3' },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Google TTS kļūda: ${response.status} — ${err}`);
+  }
+
+  const data = await response.json();
+  return Buffer.from(data.audioContent, 'base64');
 }
 
 // ElevenLabs TTS
@@ -107,10 +142,12 @@ app.post('/api/read', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Fails ir tukšs vai tekstu nevar nolasīt.' });
     }
 
-    // ElevenLabs limits: max ~5000 rakstzīmes vienā pieprasījumā
+    const lang = detectLanguage(text.trim());
     const chunk = text.trim().slice(0, 4900);
 
-    const audioBuffer = await textToSpeech(chunk);
+    const audioBuffer = (lang === 'lv' || lang === 'he')
+      ? await textToSpeechGoogle(chunk, lang)
+      : await textToSpeech(chunk);
 
     res.set('Content-Type', 'audio/mpeg');
     res.send(audioBuffer);
