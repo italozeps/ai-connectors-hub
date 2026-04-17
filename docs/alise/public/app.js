@@ -4,6 +4,7 @@ const fileName = document.getElementById('fileName');
 const readBtn = document.getElementById('readBtn');
 const status = document.getElementById('status');
 const audioPlayer = document.getElementById('audioPlayer');
+const downloadBtn = document.getElementById('downloadBtn');
 
 // Faila izvēle
 fileInput.addEventListener('change', () => {
@@ -14,6 +15,7 @@ fileInput.addEventListener('change', () => {
     readBtn.disabled = false;
     hideStatus();
     audioPlayer.classList.add('hidden');
+    downloadBtn.classList.add('hidden');
   }
 });
 
@@ -48,6 +50,10 @@ readBtn.addEventListener('click', async () => {
     audioPlayer.src = audioUrl;
     audioPlayer.classList.remove('hidden');
     audioPlayer.play();
+
+    downloadBtn.href = audioUrl;
+    downloadBtn.download = `alise-${file.name.replace(/\.[^.]+$/, '')}.mp3`;
+    downloadBtn.classList.remove('hidden');
 
     setStatus('Alise lasa...', 'success');
   } catch (err) {
