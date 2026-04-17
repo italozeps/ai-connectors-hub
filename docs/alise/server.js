@@ -55,10 +55,9 @@ function detectLanguage(text) {
   return 'en';
 }
 
-// Google Cloud TTS (latviešu un ivrits)
+// Google Cloud TTS (tikai latviešu)
 const GOOGLE_TTS_VOICES = {
   lv: { languageCode: 'lv-LV', name: 'lv-LV-Standard-A' },
-  he: { languageCode: 'he-IL', name: 'he-IL-Standard-A' },
 };
 
 async function textToSpeechGoogle(text, lang) {
@@ -95,13 +94,14 @@ async function textToSpeech(text) {
 
   const languageCode = detectLanguage(text);
 
+  const isHebrew = languageCode === 'he';
+
   const requestBody = {
     text: text,
-    model_id: 'eleven_multilingual_v2',
-    voice_settings: {
-      stability: 0.5,
-      similarity_boost: 0.75,
-    },
+    model_id: isHebrew ? 'eleven_turbo_v2_5' : 'eleven_multilingual_v2',
+    voice_settings: isHebrew
+      ? { stability: 0.5, similarity_boost: 0.75, style: 0, use_speaker_boost: false }
+      : { stability: 0.5, similarity_boost: 0.75 },
   };
 
   if (languageCode !== 'lv') {
@@ -145,7 +145,7 @@ app.post('/api/read', upload.single('file'), async (req, res) => {
     const lang = detectLanguage(text.trim());
     const chunk = text.trim().slice(0, 4900);
 
-    const audioBuffer = (lang === 'lv' || lang === 'he')
+    const audioBuffer = (lang === 'lv')
       ? await textToSpeechGoogle(chunk, lang)
       : await textToSpeech(chunk);
 
