@@ -60,6 +60,19 @@ async function textToSpeech(text) {
 
   const languageCode = detectLanguage(text);
 
+  const requestBody = {
+    text: text,
+    model_id: 'eleven_multilingual_v2',
+    voice_settings: {
+      stability: 0.5,
+      similarity_boost: 0.75,
+    },
+  };
+
+  if (languageCode !== 'lv') {
+    requestBody.language_code = languageCode;
+  }
+
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
     {
@@ -69,15 +82,7 @@ async function textToSpeech(text) {
         'Content-Type': 'application/json',
         'Accept': 'audio/mpeg',
       },
-      body: JSON.stringify({
-        text: text,
-        model_id: 'eleven_multilingual_v2',
-        language_code: languageCode,
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-        },
-      }),
+      body: JSON.stringify(requestBody),
     }
   );
 
