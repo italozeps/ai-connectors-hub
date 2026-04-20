@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini — Semināra aģents</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: 'Georgia', serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      text-align: center;
+      padding: 14px 0 10px;
+      background: #111;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    header h1 {
+      font-size: 1.3rem;
+      letter-spacing: 0.18em;
+      color: #8ab4f8;
+      font-weight: normal;
+    }
+    header p {
+      font-size: 0.65rem;
+      color: #444;
+      letter-spacing: 0.12em;
+      margin-top: 3px;
+      text-transform: uppercase;
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    /* Sistēmas prompts */
+    .prompt-wrap {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 8px;
+    }
+    .prompt-wrap label {
+      font-size: 0.6rem;
+      color: #555;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 4px;
+    }
+    #systemPrompt {
+      width: 100%;
+      height: 80px;
+      background: #0d0d0d;
+      border: 1px solid #2a2a2a;
+      border-radius: 3px;
+      color: #b0b8d0;
+      font-family: 'Georgia', serif;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      padding: 5px 7px;
+      resize: vertical;
+      outline: none;
+    }
+    #systemPrompt:focus { border-color: #3a4a6a; }
+
+    /* Savienojuma panelis */
+    .connect-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 8px 12px;
+    }
+    #connectBtn {
+      background: #1a1a2a;
+      border: 1px solid #3a4a7a;
+      color: #8ab4f8;
+      padding: 7px 22px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+    #connectBtn:hover:not(:disabled) { border-color: #8ab4f8; }
+    #connectBtn:disabled { opacity: 0.4; cursor: default; }
+
+    .voice-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      color: #555;
+    }
+    .voice-wrap label { letter-spacing: 0.06em; }
+    #voiceSelect {
+      background: #1a1a2a;
+      border: 1px solid #2a2a3a;
+      color: #8ab4f8;
+      padding: 3px 6px;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      outline: none;
+    }
+    #statusEl {
+      flex: 1;
+      text-align: right;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: #444;
+    }
+    #statusEl.connecting { color: #8ab4f8; }
+    #statusEl.connected  { color: #6dbf6d; }
+    #statusEl.speaking   { color: #8ab4f8; animation: pulse 1s infinite; }
+    #statusEl.listening  { color: #f8c84a; }
+    #statusEl.error      { color: #bf6d6d; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+    /* VAD josla */
+    .vad-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #vadBar {
+      flex: 1;
+      height: 4px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #vadLevel {
+      height: 100%;
+      width: 0%;
+      background: #8ab4f8;
+      border-radius: 2px;
+      transition: width 0.05s;
+    }
+    #vadLabel {
+      font-size: 0.6rem;
+      color: #444;
+      letter-spacing: 0.06em;
+      width: 60px;
+      text-align: right;
+    }
+
+    /* Sarunu vēsture */
+    .transcript-wrap {
+      flex: 1;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .transcript-wrap:empty::before {
+      content: 'Savienojums nav aktīvs...';
+      color: #333;
+      font-size: 0.75rem;
+      font-style: italic;
+    }
+    .msg {
+      max-width: 88%;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: #1a1a2a;
+      border: 1px solid #2a2a4a;
+      color: #c0c8e0;
+    }
+    .msg.gemini {
+      align-self: flex-start;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      color: #d0c8b0;
+    }
+    .msg .role {
+      font-size: 0.6rem;
+      color: #555;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .msg.gemini .role { color: #8ab4f8; }
+    .msg.user .role   { color: #6dbf6d; }
+    .msg.partial { opacity: 0.6; font-style: italic; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GEMINI</h1>
+    <p>Balss aģents — Google Gemini Live API</p>
+  </header>
+
+  <div class="main">
+    <div class="prompt-wrap">
+      <label>Sistēmas prompts</label>
+      <textarea id="systemPrompt">Tu esi Gemini — seno valodu semināra dalībnieks. Mēs lasām Ksenofonta Anabasis grieķu valodā. Tu klausies, seko lasījumam, atbildi uz lingvistiskiem jautājumiem un komentē tekstu kā zinošs dalībnieks. Esi kodolīgs. Grieķu citātus raksti ar grieķu burtiem. Ja prasa tulkojumu — tulko bez komentāriem.</textarea>
+    </div>
+
+    <div class="connect-wrap">
+      <button id="connectBtn">Savienot</button>
+      <div class="voice-wrap">
+        <label>Balss:</label>
+        <select id="voiceSelect">
+          <option value="Puck">Puck</option>
+          <option value="Charon">Charon</option>
+          <option value="Kore">Kore</option>
+          <option value="Fenrir">Fenrir</option>
+          <option value="Aoede">Aoede</option>
+          <option value="Leda">Leda</option>
+          <option value="Orus">Orus</option>
+          <option value="Zephyr">Zephyr</option>
+        </select>
+      </div>
+      <div id="statusEl">nav savienots</div>
+    </div>
+
+    <div class="vad-wrap">
+      <div id="vadBar"><div id="vadLevel"></div></div>
+      <div id="vadLabel">mikrofons</div>
+    </div>
+
+    <div class="transcript-wrap" id="transcript"></div>
+  </div>
+
+  <script>
+    const connectBtn   = document.getElementById('connectBtn');
+    const statusEl     = document.getElementById('statusEl');
+    const transcript   = document.getElementById('transcript');
+    const systemPrompt = document.getElementById('systemPrompt');
+    const voiceSelect  = document.getElementById('voiceSelect');
+    const vadLevel     = document.getElementById('vadLevel');
+    const vadLabel     = document.getElementById('vadLabel');
+
+    const WS_URL = `ws://${location.host}`;
+
+    let ws = null, audioCtx = null, analyser = null, vadRaf = null;
+    let scriptProcessor = null, micStream = null;
+    let connected = false;
+    let nextPlayTime = 0;
+    let geminiPartialEl = null, userPartialEl = null;
+    let geminiPartialText = '';
+
+    function setStatus(msg, cls = '') {
+      statusEl.textContent = msg;
+      statusEl.className = cls;
+    }
+
+    // ── Transkripcijas attēlošana ───────────────────────────────────
+    function createMsgEl(role, text, partial) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}${partial ? ' partial' : ''}`;
+      div.innerHTML = `<div class="role">${role === 'gemini' ? 'Gemini' : 'Tu'}</div><div class="text"></div>`;
+      div.querySelector('.text').textContent = text;
+      return div;
+    }
+
+    function addMsg(role, text, partial = false) {
+      if (role === 'gemini') {
+        if (partial) {
+          if (!geminiPartialEl) {
+            geminiPartialEl = createMsgEl('gemini', text, true);
+            transcript.appendChild(geminiPartialEl);
+          } else {
+            geminiPartialEl.querySelector('.text').textContent = text;
+          }
+        } else {
+          if (geminiPartialEl) {
+            geminiPartialEl.classList.remove('partial');
+            geminiPartialEl.querySelector('.text').textContent = text;
+            geminiPartialEl = null;
+          } else if (text) {
+            transcript.appendChild(createMsgEl('gemini', text, false));
+          }
+          geminiPartialText = '';
+        }
+      } else {
+        if (partial) {
+          if (!userPartialEl) {
+            userPartialEl = createMsgEl('user', text, true);
+            transcript.appendChild(userPartialEl);
+          } else {
+            userPartialEl.querySelector('.text').textContent = text;
+          }
+        } else {
+          if (userPartialEl) {
+            userPartialEl.classList.remove('partial');
+            userPartialEl.querySelector('.text').textContent = text;
+            userPartialEl = null;
+          } else if (text) {
+            transcript.appendChild(createMsgEl('user', text, false));
+          }
+        }
+      }
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    // ── Audio mikrofons → PCM16 @ 16kHz ───────────────────────────
+    function float32ToInt16(f32, srcRate, dstRate) {
+      const ratio  = srcRate / dstRate;
+      const length = Math.floor(f32.length / ratio);
+      const out    = new Int16Array(length);
+      for (let i = 0; i < length; i++) {
+        const s = Math.max(-1, Math.min(1, f32[Math.round(i * ratio)] || 0));
+        out[i] = s < 0 ? s * 32768 : s * 32767;
+      }
+      return out;
+    }
+
+    function arrayBufferToBase64(buf) {
+      const bytes = new Uint8Array(buf);
+      let s = '';
+      for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+      return btoa(s);
+    }
+
+    function startMic(stream) {
+      audioCtx = new AudioContext();
+      nextPlayTime = audioCtx.currentTime;
+
+      // VAD vizualizācija
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      const micSrc = audioCtx.createMediaStreamSource(stream);
+      micSrc.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      function tick() {
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        vadLevel.style.width = Math.min(100, avg * 3) + '%';
+        vadRaf = requestAnimationFrame(tick);
+      }
+      tick();
+
+      // ScriptProcessor: Float32 → Int16 @ 16kHz → base64 → WS
+      scriptProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+      micSrc.connect(scriptProcessor);
+      scriptProcessor.connect(audioCtx.destination);
+
+      scriptProcessor.onaudioprocess = (e) => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const f32 = e.inputBuffer.getChannelData(0);
+        const pcm = float32ToInt16(f32, audioCtx.sampleRate, 16000);
+        ws.send(JSON.stringify({
+          realtimeInput: {
+            mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: arrayBufferToBase64(pcm.buffer) }]
+          }
+        }));
+      };
+    }
+
+    // ── Audio atskaņošana: PCM16 @ 24kHz → AudioContext ───────────
+    function playPCM16(base64, sampleRate) {
+      if (!audioCtx) return;
+      const bin    = atob(base64);
+      const int16  = new Int16Array(bin.length / 2);
+      for (let i = 0; i < int16.length; i++)
+        int16[i] = bin.charCodeAt(i * 2) | (bin.charCodeAt(i * 2 + 1) << 8);
+      const f32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768;
+
+      const audioBuf = audioCtx.createBuffer(1, f32.length, sampleRate);
+      audioBuf.copyToChannel(f32, 0);
+      const src = audioCtx.createBufferSource();
+      src.buffer = audioBuf;
+      src.connect(audioCtx.destination);
+      const when = Math.max(audioCtx.currentTime, nextPlayTime);
+      src.start(when);
+      nextPlayTime = when + audioBuf.duration;
+    }
+
+    // ── Gemini ziņojumu apstrāde ───────────────────────────────────
+    function handleGeminiMessage(msg) {
+      // Kļūda no servera
+      if (msg.error) {
+        setStatus('Kļūda: ' + msg.error, 'error');
+        return;
+      }
+
+      // setupComplete — sesija gatava
+      if (msg.setupComplete !== undefined) {
+        setStatus('savienots', 'connected');
+        vadLabel.textContent = 'mikrofons';
+        return;
+      }
+
+      const sc = msg.serverContent;
+      if (!sc) return;
+
+      // Modeļa atbilde
+      if (sc.modelTurn?.parts) {
+        for (const part of sc.modelTurn.parts) {
+          if (part.inlineData?.mimeType?.startsWith('audio/pcm')) {
+            const rate = parseInt(part.inlineData.mimeType.match(/rate=(\d+)/)?.[1] || '24000');
+            playPCM16(part.inlineData.data, rate);
+            setStatus('runā...', 'speaking');
+          }
+          if (part.text) {
+            geminiPartialText += part.text;
+            addMsg('gemini', geminiPartialText, true);
+          }
+        }
+      }
+
+      if (sc.turnComplete) {
+        if (geminiPartialText) addMsg('gemini', geminiPartialText);
+        geminiPartialText = '';
+        setStatus('savienots', 'connected');
+      }
+
+      // Transkripcija var nākt kā inputTranscription vai generationComplete
+      const transcript = sc.inputTranscription || sc.generationComplete?.inputTranscription;
+      if (transcript?.text) {
+        addMsg('user', transcript.text, !transcript.isFinal);
+        if (transcript.isFinal) setStatus('klausās...', 'listening');
+      }
+    }
+
+    // ── Savienošanās ───────────────────────────────────────────────
+    async function connect() {
+      connectBtn.disabled = true;
+      setStatus('Aktivizē mikrofonu...', 'connecting');
+
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        startMic(micStream);
+
+        setStatus('Savienojas...', 'connecting');
+        const wsParams = new URLSearchParams({
+          voice:        voiceSelect.value,
+          instructions: systemPrompt.value.trim()
+        });
+        ws = new WebSocket(`${WS_URL}?${wsParams}`);
+
+        ws.onopen = () => {
+          console.log('[Gemini] WS atvērts — setup sūta serveris');
+        };
+
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+            handleGeminiMessage(msg);
+          } catch (err) {
+            console.warn('[Gemini] Parse kļūda:', err);
+          }
+        };
+
+        ws.onerror = (e) => {
+          console.error('[Gemini] WS kļūda:', e);
+          setStatus('Savienojuma kļūda', 'error');
+        };
+
+        ws.onclose = (e) => {
+          console.log('[Gemini] WS aizvērts:', e.code, e.reason);
+          if (connected) setStatus('savienojums zaudēts', 'error');
+          cleanup(false);
+        };
+
+        connected = true;
+        connectBtn.textContent = 'Atvienot';
+        connectBtn.disabled = false;
+        connectBtn.style.borderColor = '#bf6d6d';
+        connectBtn.style.color = '#bf6d6d';
+
+      } catch (err) {
+        console.error('[Gemini]', err);
+        setStatus('Kļūda: ' + err.message, 'error');
+        cleanup(false);
+        connectBtn.disabled = false;
+      }
+    }
+
+    function cleanup(resetStatus = true) {
+      if (vadRaf) cancelAnimationFrame(vadRaf);
+      if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
+      if (audioCtx) { audioCtx.close(); audioCtx = null; }
+      if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+      ws = null;
+      connected = false;
+      vadLevel.style.width = '0%';
+      vadLabel.textContent = 'mikrofons';
+      connectBtn.textContent = 'Savienot';
+      connectBtn.disabled = false;
+      connectBtn.style.borderColor = '';
+      connectBtn.style.color = '';
+      geminiPartialEl = null;
+      userPartialEl = null;
+      geminiPartialText = '';
+      if (resetStatus) setStatus('nav savienots');
+    }
+
+    connectBtn.addEventListener('click', () => {
+      if (connected) { cleanup(); } else { connect(); }
+    });
+
+    // postMessage no seminaras.html — tekošais teksts → Gemini
+    window.addEventListener('message', (e) => {
+      if (e.data?.type !== 'currentText') return;
+      const ctx = e.data.value?.trim();
+      if (!ctx || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        clientContent: {
+          turns: [{
+            role: 'user',
+            parts: [{ text: `[Tekošais teksts seminārā]: ${ctx}` }]
+          }],
+          turnComplete: true
+        }
+      }));
+    });
+  </script>
+</body>
+</html>
