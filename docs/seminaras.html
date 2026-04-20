@@ -39,10 +39,10 @@
       color: #666;
       text-transform: uppercase;
     }
-    .label-left  { flex: 0 0 50%; }
-    .label-right { flex: 0 0 17%; }
-    .label-alex  { flex: 0 0 17%; }
-    .label-toms  { flex: 0 0 16%; }
+    .label-left  { flex: 50; }
+    .label-right { flex: 17; }
+    .label-alex  { flex: 17; }
+    .label-toms  { flex: 16; }
 
     .frames {
       display: flex;
@@ -55,7 +55,8 @@
 
     /* Kreisais panelis — Diogenes */
     .panel-left {
-      flex: 0 0 50%;
+      flex: 50;
+      min-width: 0;
       display: flex;
     }
     .panel-left iframe {
@@ -67,7 +68,8 @@
 
     /* Vidējais panelis — Alise + avatars */
     .panel-right {
-      flex: 0 0 17%;
+      flex: 17;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -75,7 +77,8 @@
 
     /* Labais panelis — Alex */
     .panel-alex {
-      flex: 0 0 17%;
+      flex: 17;
+      min-width: 0;
       display: flex;
     }
     .panel-alex iframe {
@@ -87,7 +90,8 @@
 
     /* Labais panelis — Toms */
     .panel-toms {
-      flex: 0 0 16%;
+      flex: 16;
+      min-width: 0;
       display: flex;
     }
     .panel-toms iframe {
@@ -274,19 +278,19 @@
 
       <!-- Alises lietotāja saskarne -->
       <div class="alise-wrap">
-        <iframe src="http://localhost:3000" title="Alise"></iframe>
+        <iframe src="https://alise-1qmu.onrender.com" title="Alise"></iframe>
       </div>
 
     </div>
 
     <!-- Labais panelis: Alex -->
     <div class="panel-alex">
-      <iframe src="http://localhost:3001" title="Alex" allow="microphone"></iframe>
+      <iframe src="https://ai-connectors-hub.onrender.com" title="Alex" allow="microphone"></iframe>
     </div>
 
     <!-- Labais panelis: Toms -->
     <div class="panel-toms">
-      <iframe src="http://localhost:3002" title="Toms" allow="microphone"></iframe>
+      <iframe src="https://ai-connectors-hub-1.onrender.com" title="Toms" allow="microphone"></iframe>
     </div>
 
   </div>
@@ -661,11 +665,4 @@
         fetch(`${DID_API}/agents/${AGENT_ID}/streams/${streamId}`, {
           method: 'DELETE',
           headers: { 'Authorization': DID_AUTH, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId }),
-          keepalive: true
-        });
-      }
-    });
-  </script>
-</body>
-</html>
+          body: JSON.stringify({ session_id: sessionId 
