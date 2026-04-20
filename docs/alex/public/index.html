@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alex — Semināra aģents</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: 'Georgia', serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      text-align: center;
+      padding: 14px 0 10px;
+      background: #111;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    header h1 {
+      font-size: 1.3rem;
+      letter-spacing: 0.18em;
+      color: #a0c4a0;
+      font-weight: normal;
+    }
+    header p {
+      font-size: 0.65rem;
+      color: #444;
+      letter-spacing: 0.12em;
+      margin-top: 3px;
+      text-transform: uppercase;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    /* Sistēmas prompts */
+    .prompt-wrap {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 8px;
+    }
+    .prompt-wrap label {
+      font-size: 0.6rem;
+      color: #555;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 4px;
+    }
+    #systemPrompt {
+      width: 100%;
+      height: 80px;
+      background: #0d0d0d;
+      border: 1px solid #2a2a2a;
+      border-radius: 3px;
+      color: #b0a890;
+      font-family: 'Georgia', serif;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      padding: 5px 7px;
+      resize: vertical;
+      outline: none;
+    }
+    #systemPrompt:focus { border-color: #3a3a3a; }
+
+    /* Savienojuma panelis */
+    .connect-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 8px 12px;
+    }
+    #connectBtn {
+      background: #1a1a1a;
+      border: 1px solid #3a5a3a;
+      color: #a0c4a0;
+      padding: 7px 22px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+    #connectBtn:hover:not(:disabled) { border-color: #a0c4a0; }
+    #connectBtn:disabled { opacity: 0.4; cursor: default; }
+
+    .voice-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      color: #555;
+    }
+    .voice-wrap label { letter-spacing: 0.06em; }
+    #voiceSelect {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      color: #a0c4a0;
+      padding: 3px 6px;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      outline: none;
+    }
+
+    #statusEl {
+      flex: 1;
+      text-align: right;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: #444;
+    }
+    #statusEl.connecting { color: #a0c4a0; }
+    #statusEl.connected  { color: #6dbf6d; }
+    #statusEl.speaking   { color: #a0c4a0; animation: pulse 1s infinite; }
+    #statusEl.listening  { color: #c4a060; }
+    #statusEl.error      { color: #bf6d6d; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    /* VAD indikators */
+    .vad-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #vadBar {
+      flex: 1;
+      height: 4px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #vadLevel {
+      height: 100%;
+      width: 0%;
+      background: #6dbf6d;
+      border-radius: 2px;
+      transition: width 0.05s;
+    }
+    #vadLabel {
+      font-size: 0.6rem;
+      color: #444;
+      letter-spacing: 0.06em;
+      width: 60px;
+      text-align: right;
+    }
+
+    /* Sarunu vēsture */
+    .transcript-wrap {
+      flex: 1;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .transcript-wrap:empty::before {
+      content: 'Savienojums nav aktīvs...';
+      color: #333;
+      font-size: 0.75rem;
+      font-style: italic;
+    }
+    .msg {
+      max-width: 88%;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: #1a2a1a;
+      border: 1px solid #2a3a2a;
+      color: #c0d8c0;
+    }
+    .msg.alex {
+      align-self: flex-start;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      color: #d0c8b0;
+    }
+    .msg .role {
+      font-size: 0.6rem;
+      color: #555;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .msg.alex .role { color: #a0c4a0; }
+    .msg.user .role { color: #6dbf6d; }
+    .msg.partial { opacity: 0.6; font-style: italic; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ALEX</h1>
+    <p>Balss aģents — OpenAI Realtime API</p>
+  </header>
+
+  <div class="main">
+
+    <div class="prompt-wrap">
+      <label>Sistēmas prompts</label>
+      <textarea id="systemPrompt">Tu esi Alekss — seno valodu semināra dalībnieks. Mēs lasām Ksenofonta Anabasis grieķu valodā. Tu klausies, seko lasījumam, atbildi uz lingvistiskiem jautājumiem un komentē tekstu kā zinošs dalībnieks. Esi kodolīgs. Grieķu citātus raksti ar grieķu burtiem. Ja prasa tulkojumu — tulko bez komentāriem.</textarea>
+    </div>
+
+    <div class="connect-wrap">
+      <button id="connectBtn">Savienot</button>
+      <div class="voice-wrap">
+        <label>Balss:</label>
+        <select id="voiceSelect">
+          <option value="alloy">Alloy</option>
+          <option value="echo">Echo</option>
+          <option value="shimmer">Shimmer</option>
+          <option value="ash">Ash</option>
+          <option value="ballad">Ballad</option>
+          <option value="coral">Coral</option>
+          <option value="sage">Sage</option>
+          <option value="verse">Verse</option>
+        </select>
+      </div>
+      <div id="statusEl">nav savienots</div>
+    </div>
+
+    <div class="vad-wrap">
+      <div id="vadBar"><div id="vadLevel"></div></div>
+      <div id="vadLabel">mikrofons</div>
+    </div>
+
+    <div class="transcript-wrap" id="transcript"></div>
+
+  </div>
+
+  <audio id="remoteAudio" autoplay></audio>
+
+  <script>
+    const connectBtn    = document.getElementById('connectBtn');
+    const statusEl      = document.getElementById('statusEl');
+    const transcript    = document.getElementById('transcript');
+    const systemPrompt  = document.getElementById('systemPrompt');
+    const voiceSelect   = document.getElementById('voiceSelect');
+    const vadLevel      = document.getElementById('vadLevel');
+    const vadLabel      = document.getElementById('vadLabel');
+    const remoteAudio   = document.getElementById('remoteAudio');
+
+    let pc = null, dc = null, audioCtx = null, analyser = null, vadRaf = null;
+    let connected = false;
+    let alexPartialEl = null;
+    let userPartialEl = null;
+
+    function setStatus(msg, cls = '') {
+      statusEl.textContent = msg;
+      statusEl.className = cls;
+    }
+
+    function addMessage(role, text, partial = false) {
+      if (role === 'alex') {
+        if (partial) {
+          if (!alexPartialEl) {
+            alexPartialEl = createMsgEl('alex', text, true);
+            transcript.appendChild(alexPartialEl);
+          } else {
+            alexPartialEl.querySelector('.text').textContent = text;
+          }
+          transcript.scrollTop = transcript.scrollHeight;
+          return alexPartialEl;
+        } else {
+          if (alexPartialEl) {
+            alexPartialEl.classList.remove('partial');
+            alexPartialEl.querySelector('.text').textContent = text;
+            alexPartialEl = null;
+          } else {
+            transcript.appendChild(createMsgEl('alex', text, false));
+          }
+        }
+      } else {
+        if (partial) {
+          if (!userPartialEl) {
+            userPartialEl = createMsgEl('user', text, true);
+            transcript.appendChild(userPartialEl);
+          } else {
+            userPartialEl.querySelector('.text').textContent = text;
+          }
+          transcript.scrollTop = transcript.scrollHeight;
+          return userPartialEl;
+        } else {
+          if (userPartialEl) {
+            userPartialEl.classList.remove('partial');
+            userPartialEl.querySelector('.text').textContent = text;
+            userPartialEl = null;
+          } else {
+            transcript.appendChild(createMsgEl('user', text, false));
+          }
+        }
+      }
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    function createMsgEl(role, text, partial) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}${partial ? ' partial' : ''}`;
+      div.innerHTML = `<div class="role">${role === 'alex' ? 'Alex' : 'Tu'}</div><div class="text"></div>`;
+      div.querySelector('.text').textContent = text;
+      return div;
+    }
+
+    // VAD vizualizācija
+    function startVAD(stream) {
+      audioCtx = new AudioContext();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      const src = audioCtx.createMediaStreamSource(stream);
+      src.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+
+      function tick() {
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        const pct = Math.min(100, avg * 3);
+        vadLevel.style.width = pct + '%';
+        vadRaf = requestAnimationFrame(tick);
+      }
+      tick();
+    }
+
+    function stopVAD() {
+      if (vadRaf) cancelAnimationFrame(vadRaf);
+      if (audioCtx) audioCtx.close();
+      vadLevel.style.width = '0%';
+    }
+
+    // DataChannel notikumu apstrāde
+    function handleEvent(ev) {
+      switch (ev.type) {
+        case 'session.created':
+        case 'session.updated':
+          setStatus('savienots', 'connected');
+          break;
+
+        case 'input_audio_buffer.speech_started':
+          setStatus('klausās...', 'listening');
+          vadLabel.textContent = 'runā';
+          break;
+
+        case 'input_audio_buffer.speech_stopped':
+          vadLabel.textContent = 'mikrofons';
+          break;
+
+        case 'conversation.item.input_audio_transcription.delta':
+          addMessage('user', ev.delta || '', true);
+          break;
+
+        case 'conversation.item.input_audio_transcription.completed':
+          if (ev.transcript?.trim()) addMessage('user', ev.transcript.trim());
+          break;
+
+        case 'response.audio_transcript.delta':
+          addMessage('alex', (alexPartialEl?.querySelector('.text').textContent || '') + (ev.delta || ''), true);
+          setStatus('runā...', 'speaking');
+          break;
+
+        case 'response.audio_transcript.done':
+          if (ev.transcript?.trim()) addMessage('alex', ev.transcript.trim());
+          setStatus('savienots', 'connected');
+          break;
+
+        case 'response.done':
+          setStatus('savienots', 'connected');
+          break;
+
+        case 'error':
+          console.error('[Alex] Kļūda:', ev.error);
+          setStatus('Kļūda: ' + (ev.error?.message || ev.error), 'error');
+          break;
+      }
+    }
+
+    async function connect() {
+      connectBtn.disabled = true;
+      setStatus('Izveido sesiju...', 'connecting');
+
+      try {
+        // 1. Iegūst īslaicīgu tokenu no servera
+        const sesRes = await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            voice: voiceSelect.value,
+            instructions: systemPrompt.value.trim() || undefined,
+          }),
+        });
+        if (!sesRes.ok) {
+          const e = await sesRes.json();
+          throw new Error(e.error || `Sesija: ${sesRes.status}`);
+        }
+        const sesData = await sesRes.json();
+        const ephemeralKey = sesData.client_secret?.value;
+        if (!ephemeralKey) throw new Error('Nav saņemts ephemeral token');
+        console.log('[Alex] Ephemeral token iegūts');
+
+        // 2. Mikrofons
+        setStatus('Aktivizē mikrofonu...', 'connecting');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        startVAD(stream);
+
+        // 3. RTCPeerConnection
+        pc = new RTCPeerConnection();
+
+        pc.onconnectionstatechange = () => {
+          console.log('[Alex] connectionState:', pc.connectionState);
+          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            setStatus('savienojums zaudēts', 'error');
+            cleanup();
+          }
+        };
+
+        // Remote audio → atskaņotājs
+        pc.ontrack = (e) => {
+          remoteAudio.srcObject = e.streams[0];
+          console.log('[Alex] Audio track saņemts');
+        };
+
+        // DataChannel priekš notikumiem
+        dc = pc.createDataChannel('oai-events');
+
+        dc.onopen = () => {
+          console.log('[Alex] DataChannel atvērts');
+          // Iestata sesijas konfigurāciju
+          dc.send(JSON.stringify({
+            type: 'session.update',
+            session: {
+              instructions: systemPrompt.value.trim() || undefined,
+              turn_detection: { type: 'server_vad', threshold: 0.5, silence_duration_ms: 600 },
+              input_audio_transcription: { model: 'whisper-1' },
+              modalities: ['text', 'audio'],
+            },
+          }));
+        };
+
+        dc.onmessage = (e) => {
+          try { handleEvent(JSON.parse(e.data)); }
+          catch (err) { console.warn('[Alex] DataChannel ziņojums:', err); }
+        };
+
+        dc.onerror = (e) => console.error('[Alex] DataChannel kļūda:', e);
+
+        // Pievieno mikrofona audio
+        stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+        // 4. SDP offer
+        setStatus('SDP handshake...', 'connecting');
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        // 5. POST uz OpenAI ar SDP offer
+        const model = 'gpt-4o-realtime-preview-2024-12-17';
+        const sdpRes = await fetch(`https://api.openai.com/v1/realtime?model=${model}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${ephemeralKey}`,
+            'Content-Type': 'application/sdp',
+          },
+          body: offer.sdp,
+        });
+        if (!sdpRes.ok) {
+          const err = await sdpRes.text();
+          throw new Error(`OpenAI WebRTC: ${sdpRes.status} ${err}`);
+        }
+
+        // 6. SDP answer
+        const answerSdp = await sdpRes.text();
+        await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+        console.log('[Alex] WebRTC savienojums izveidots');
+
+        connected = true;
+        connectBtn.textContent = 'Atvienot';
+        connectBtn.disabled = false;
+        connectBtn.style.borderColor = '#bf6d6d';
+        connectBtn.style.color = '#bf6d6d';
+        setStatus('savienots', 'connected');
+
+      } catch (err) {
+        console.error('[Alex]', err);
+        setStatus('Kļūda: ' + err.message, 'error');
+        cleanup();
+        connectBtn.disabled = false;
+      }
+    }
+
+    function cleanup() {
+      stopVAD();
+      if (dc) { dc.close(); dc = null; }
+      if (pc) { pc.close(); pc = null; }
+      remoteAudio.srcObject = null;
+      connected = false;
+      connectBtn.textContent = 'Savienot';
+      connectBtn.disabled = false;
+      connectBtn.style.borderColor = '';
+      connectBtn.style.color = '';
+      alexPartialEl = null;
+      userPartialEl = null;
+    }
+
+    connectBtn.addEventListener('click', () => {
+      if (connected) {
+        cleanup();
+        setStatus('nav savienots');
+      } else {
+        connect();
+      }
+    });
+
+    // postMessage no seminaras.html — tekošais teksts
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'currentText' && dc?.readyState === 'open') {
+        const ctx = e.data.value?.trim();
+        if (!ctx) return;
+        dc.send(JSON.stringify({
+          type: 'conversation.item.create',
+          item: {
+            type: 'message',
+            role: 'user',
+            content: [{ type: 'input_text', text: `[Tekošais teksts seminārā]: ${ctx}` }],
+          },
+        }));
+        dc.send(JSON.stringify({ type: 'response.create' }));
+      }
+    });
+  </script>
+</body>
+</html>
