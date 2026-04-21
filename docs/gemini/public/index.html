@@ -252,7 +252,7 @@
     const vadLevel     = document.getElementById('vadLevel');
     const vadLabel     = document.getElementById('vadLabel');
 
-    const WS_URL = `ws://${location.host}`;
+    const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
 
     let ws = null, audioCtx = null, analyser = null, vadRaf = null;
     let scriptProcessor = null, micStream = null;
@@ -527,8 +527,4 @@
           }],
           turnComplete: true
         }
-      }));
-    });
-  </script>
-</body>
-</html>
+ 
