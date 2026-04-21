@@ -137,7 +137,7 @@ wss.on('connection', (clientWs, req) => {
   clientWs.on('error', (err) => console.error('[Gemini] Klienta WS kļūda:', err.message));
 });
 
-const PORT = process.env.GEMINI_PORT || 3002;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   console.log(`Gemini darbojas: http://localhost:${PORT}`);
 });
