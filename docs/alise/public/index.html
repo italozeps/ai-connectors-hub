@@ -156,15 +156,13 @@
       border: 1px solid #222;
       border-radius: 4px;
       background: #111;
-      position: relative;
     }
-    .iframe-wrap iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      transform-origin: top left;
+    #leftFrame {
+      width: 100%;
+      height: 100%;
       border: none;
-      background: #111;
+      transform-origin: top left;
+      display: block;
     }
     .panel-right {
       flex: 17;
@@ -785,23 +783,20 @@
     const srcGo      = document.getElementById('srcGo');
     const fileInput  = document.getElementById('fileInput');
     const labelLeft  = document.getElementById('label-left');
-    const iframeWrap = document.getElementById('iframeWrap');
     const zoomLabel  = document.getElementById('zoomLabel');
 
     let currentSource = 'diogenes';
     let zoomLevel = 1.0;
 
     function applyZoom() {
-      const w = iframeWrap.offsetWidth;
-      const h = iframeWrap.offsetHeight;
-      leftFrame.style.width  = (w / zoomLevel) + 'px';
-      leftFrame.style.height = (h / zoomLevel) + 'px';
-      leftFrame.style.transform = `scale(${zoomLevel})`;
+      leftFrame.style.transform = zoomLevel === 1 ? '' : `scale(${zoomLevel})`;
+      leftFrame.style.width  = zoomLevel !== 1 ? (100 / zoomLevel) + '%' : '100%';
+      leftFrame.style.height = zoomLevel !== 1 ? (100 / zoomLevel) + '%' : '100%';
       zoomLabel.textContent = Math.round(zoomLevel * 100) + '%';
     }
 
     function zoomLeft(delta) {
-      zoomLevel = Math.min(3, Math.max(0.3, zoomLevel + delta));
+      zoomLevel = Math.min(3, Math.max(0.3, Math.round((zoomLevel + delta) * 10) / 10));
       applyZoom();
     }
 
@@ -810,8 +805,6 @@
       applyZoom();
     }
 
-    // Sākotnēji iestata izmērus
-    window.addEventListener('load', applyZoom);
     window.addEventListener('resize', applyZoom);
 
     function setSource(type, btn) {
