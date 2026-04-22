@@ -1,4 +1,6 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+// Lokāli lasa .env no projekta saknes, Render izmanto env vars automātiski
+require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
+require('dotenv').config(); // fallback — meklē .env tajā pašā mapē
 const express   = require('express');
 const http      = require('http');
 const WebSocket = require('ws');
@@ -142,8 +144,12 @@ server.listen(PORT, () => {
   console.log(`Gemini darbojas: http://localhost:${PORT}`);
 });
 
-// Izdrukā pieejamos Gemini modeļus
-fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`)
+// Izdrukā pieejamos Gemini modeļus (Node 18+ ir iebūvēts fetch)
+if (!GEMINI_API_KEY) {
+  console.warn('[Gemini] ⚠  GEMINI_API_KEY nav iestatīts! Iestatiet Render Environment Variables.');
+}
+(typeof fetch !== 'undefined' ? Promise.resolve() : Promise.reject('no fetch')).then(() =>
+fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`))
   .then(r => r.json())
   .then(data => {
     if (data.error) {
