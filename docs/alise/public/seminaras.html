@@ -58,13 +58,69 @@
       flex: 50;
       min-width: 0;
       display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
     .panel-left iframe {
       flex: 1;
       border: 1px solid #222;
       border-radius: 4px;
       background: #111;
+      min-height: 0;
     }
+
+    /* Avota izvēles josla */
+    .source-bar {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 5px 8px;
+      flex-shrink: 0;
+    }
+    .src-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #888;
+      padding: 3px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-family: 'Georgia', serif;
+      letter-spacing: 0.06em;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .src-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+    .src-btn.active { border-color: #c9a84c; color: #c9a84c; background: #1e1a10; }
+    .src-input {
+      flex: 1;
+      background: #0d0d0d;
+      border: 1px solid #2a2a2a;
+      border-radius: 3px;
+      color: #d0c8b0;
+      font-family: 'Georgia', serif;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .src-input:focus { border-color: #3a3a3a; }
+    .src-input::placeholder { color: #444; font-style: italic; }
+    .src-go {
+      background: #1a1a1a;
+      border: 1px solid #c9a84c;
+      color: #c9a84c;
+      padding: 3px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      transition: background 0.15s;
+    }
+    .src-go:hover { background: #1e1a10; }
 
     /* Vidējais panelis — Alise + avatars */
     .panel-right {
@@ -238,16 +294,29 @@
     <h1>AL&amp;BL Readings</h1>
   </header>
   <div class="labels">
-    <span class="label-left">Diogenes — localhost:8888</span>
-    <span class="label-right">Alise — localhost:3000</span>
-    <span class="label-alex">Alex — localhost:3001</span>
-    <span class="label-toms">Toms — localhost:3002</span>
+    <span class="label-left" id="label-left">Diogenes — localhost:8888</span>
+    <span class="label-right">Alise — alise-1qmu.onrender.com</span>
+    <span class="label-alex">Alex — ai-connectors-hub.onrender.com</span>
+    <span class="label-toms">Toms — ai-connectors-hub-1.onrender.com</span>
   </div>
   <div class="frames">
 
-    <!-- Kreisais panelis: Diogenes -->
+    <!-- Kreisais panelis: Diogenes / PDF / URL -->
     <div class="panel-left">
-      <iframe src="http://localhost:8888" title="Diogenes"></iframe>
+
+      <!-- Avota izvēles josla -->
+      <div class="source-bar">
+        <button class="src-btn active" onclick="setSource('diogenes')">Diogenes</button>
+        <button class="src-btn" onclick="setSource('pdf')">PDF</button>
+        <button class="src-btn" onclick="setSource('url')">URL</button>
+        <input type="text" class="src-input" id="srcInput"
+          placeholder="Ievadi faila ceļu vai URL un spiež →" style="display:none">
+        <input type="file" id="fileInput" accept=".pdf,.html,.htm"
+          style="display:none" onchange="loadFile(this)">
+        <button class="src-go" id="srcGo" style="display:none" onclick="goSource()">→</button>
+      </div>
+
+      <iframe id="leftFrame" src="http://localhost:8888" title="Diogenes"></iframe>
     </div>
 
     <!-- Labais panelis: D-ID avatars + Alise -->
@@ -298,7 +367,7 @@
   <script>
     const AGENT_ID  = 'v2_agt_H7nAQfbY';
     const DID_API   = 'https://api.d-id.com';
-    const ALISE_SSE = 'http://localhost:3000/api/events';
+    const ALISE_SSE = 'https://alise-1qmu.onrender.com/api/events';
 
     const video      = document.getElementById('didVideo');
     const overlay    = document.getElementById('avatarOverlay');
@@ -310,7 +379,7 @@
     let iceCandidateQueue = [];
 
     // Ielādē DID_API_KEY no servera (.env)
-    fetch('http://localhost:3000/api/did-config')
+    fetch('https://alise-1qmu.onrender.com/api/did-config')
       .then(r => r.json())
       .then(({ key }) => {
         if (!key) { setStatus('DID atslēga nav konfigurēta', 'error'); return; }
@@ -553,13 +622,13 @@
 
     function broadcastCurrentText(text) {
       aliseFrame?.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, 'http://localhost:3000'
+        { type: 'currentText', value: text }, 'https://alise-1qmu.onrender.com'
       );
       alexFrame?.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, 'http://localhost:3001'
+        { type: 'currentText', value: text }, 'https://ai-connectors-hub.onrender.com'
       );
       tomsFrame?.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, 'http://localhost:3002'
+        { type: 'currentText', value: text }, 'https://ai-connectors-hub-1.onrender.com'
       );
     }
 
@@ -629,7 +698,7 @@
       if (!streamId || !sessionId) return;
       setStatus('Alise runā...', 'speaking');
       try {
-        const res = await fetch('http://localhost:3000/api/did-clip', {
+        const res = await fetch('https://alise-1qmu.onrender.com/api/did-clip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, audioBase64 })
@@ -646,7 +715,7 @@
       if (!streamId || !sessionId) return;
       setStatus('Alise runā...', 'speaking');
       try {
-        const res = await fetch('http://localhost:3000/api/did-clip', {
+        const res = await fetch('https://alise-1qmu.onrender.com/api/did-clip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, text })
@@ -658,7 +727,65 @@
       }
     }
 
-    // Aiztīra pie aizvēršanas
+    // ── Kreisā paneļa avota pārslēgšana ───────────────────────────
+    const leftFrame  = document.getElementById('leftFrame');
+    const srcInput   = document.getElementById('srcInput');
+    const srcGo      = document.getElementById('srcGo');
+    const fileInput  = document.getElementById('fileInput');
+    const labelLeft  = document.getElementById('label-left');
+
+    let currentSource = 'diogenes';
+
+    function setSource(type) {
+      currentSource = type;
+
+      // Atjaunot pogu stilus
+      document.querySelectorAll('.src-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+
+      srcInput.style.display = 'none';
+      srcGo.style.display    = 'none';
+
+      if (type === 'diogenes') {
+        leftFrame.src = 'http://localhost:8888';
+        labelLeft.textContent = 'Diogenes — localhost:8888';
+
+      } else if (type === 'pdf') {
+        // Atver failu izvēles dialogu
+        fileInput.click();
+
+      } else if (type === 'url') {
+        srcInput.placeholder = 'Ievadi URL, piem. https://...';
+        srcInput.value = '';
+        srcInput.style.display = 'flex';
+        srcGo.style.display    = 'block';
+        srcInput.focus();
+      }
+    }
+
+    function goSource() {
+      const val = srcInput.value.trim();
+      if (!val) return;
+      let url = val;
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      leftFrame.src = url;
+      labelLeft.textContent = url.replace(/^https?:\/\//, '').substring(0, 40);
+    }
+
+    srcInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') goSource();
+    });
+
+    function loadFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      leftFrame.src = url;
+      labelLeft.textContent = file.name;
+      // Atjaunot PDF pogu kā aktīvu
+      document.querySelectorAll('.src-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.src-btn')[1].classList.add('active');
+    }
     window.addEventListener('beforeunload', () => {
       if (eventSource) eventSource.close();
       if (pc && streamId) {
