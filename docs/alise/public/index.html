@@ -15,7 +15,12 @@
       </p>
     </header>
 
-    <section class="card">
+    <div class="mode-tabs">
+      <button class="tab-btn active" data-mode="a">A — Lasīt failu</button>
+      <button class="tab-btn" data-mode="b">B — Mikrofons</button>
+    </div>
+
+    <section class="card" id="modeA">
       <label class="file-label" id="fileLabel">
         <input type="file" id="fileInput" accept=".txt,.pdf" />
         <span id="fileName">Izvēlies TXT vai PDF failu</span>
@@ -28,6 +33,18 @@
       <audio id="audioPlayer" controls class="hidden"></audio>
 
       <a id="downloadBtn" class="btn-download hidden" download="alise-lasijums.mp3">⬇ Lejupielādēt MP3</a>
+    </section>
+
+    <section class="card hidden" id="modeB">
+      <p class="mic-hint">Saki <strong>"Alise"</strong>, tad uzdod jautājumu.<br>
+        <span class="langs">Latviešu · English</span>
+      </p>
+
+      <button id="micBtn">⬤ Aktivizēt mikrofonu</button>
+
+      <div id="micStatus" class="status hidden"></div>
+
+      <div id="micTranscript" class="transcript hidden"></div>
     </section>
 
     <footer>
