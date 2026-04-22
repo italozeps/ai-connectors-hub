@@ -1,40 +1,675 @@
 <!DOCTYPE html>
 <html lang="lv">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alise — Seno Valodu Lasītāja</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AL&amp;BL Readings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: 'Georgia', serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      text-align: center;
+      padding: 12px 0 8px;
+      background: #111;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      letter-spacing: 0.15em;
+      color: #c9a84c;
+      font-weight: normal;
+    }
+    .labels {
+      display: flex;
+      background: #151515;
+      border-bottom: 1px solid #222;
+    }
+    .labels span {
+      text-align: center;
+      padding: 5px 0;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: #666;
+      text-transform: uppercase;
+    }
+    .label-left  { flex: 50; }
+    .label-right { flex: 17; }
+    .label-alex  { flex: 17; }
+    .label-toms  { flex: 16; }
+
+    .frames {
+      display: flex;
+      flex: 1;
+      gap: 4px;
+      padding: 4px;
+      background: #0d0d0d;
+      overflow: hidden;
+    }
+
+    /* Kreisais panelis — Diogenes */
+    .panel-left {
+      flex: 50;
+      min-width: 0;
+      display: flex;
+    }
+    .panel-left iframe {
+      flex: 1;
+      border: 1px solid #222;
+      border-radius: 4px;
+      background: #111;
+    }
+
+    /* Vidējais panelis — Alise + avatars */
+    .panel-right {
+      flex: 17;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Labais panelis — Alex */
+    .panel-alex {
+      flex: 17;
+      min-width: 0;
+      display: flex;
+    }
+    .panel-alex iframe {
+      flex: 1;
+      border: 1px solid #222;
+      border-radius: 4px;
+      background: #111;
+    }
+
+    /* Labais panelis — Toms */
+    .panel-toms {
+      flex: 16;
+      min-width: 0;
+      display: flex;
+    }
+    .panel-toms iframe {
+      flex: 1;
+      border: 1px solid #222;
+      border-radius: 4px;
+      background: #111;
+    }
+
+    /* D-ID avatara bloks */
+    .avatar-wrap {
+      flex: 0 0 42%;
+      position: relative;
+      background: #0a0a0a;
+      border: 1px solid #222;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #didVideo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+      display: block;
+    }
+    #avatarOverlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: rgba(10,10,10,0.85);
+    }
+    #avatarOverlay p {
+      font-size: 0.75rem;
+      color: #555;
+      letter-spacing: 0.05em;
+    }
+    #connectBtn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #c9a84c;
+      padding: 7px 18px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      transition: border-color 0.2s;
+    }
+    #connectBtn:hover { border-color: #c9a84c; }
+    #connectBtn:disabled { opacity: 0.4; cursor: default; }
+
+    #avatarStatus {
+      position: absolute;
+      bottom: 6px;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 0.65rem;
+      color: #444;
+      letter-spacing: 0.06em;
+    }
+    #avatarStatus.active { color: #c9a84c; }
+    #avatarStatus.speaking { color: #6dbf6d; }
+    #avatarStatus.error { color: #bf6d6d; }
+
+    /* Teksta izcēluma lauks */
+    .capture-wrap {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+    .capture-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .capture-header span {
+      font-size: 0.65rem;
+      color: #555;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .capture-header-btns {
+      display: flex;
+      gap: 4px;
+    }
+    .capture-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #c9a84c;
+      padding: 3px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      transition: border-color 0.2s;
+    }
+    .capture-btn:hover { border-color: #c9a84c; }
+    #currentText {
+      width: 100%;
+      min-height: 52px;
+      max-height: 110px;
+      background: #0d0d0d;
+      border: 1px solid #2a2a2a;
+      border-radius: 3px;
+      color: #d0c8b0;
+      font-family: 'Georgia', serif;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      padding: 5px 7px;
+      resize: vertical;
+      outline: none;
+    }
+    #currentText:focus { border-color: #3a3a3a; }
+    #currentText.flash { border-color: #c9a84c; transition: border-color 0s; }
+
+    /* Alises iframe bloks */
+    .alise-wrap {
+      flex: 1;
+      display: flex;
+    }
+    .alise-wrap iframe {
+      flex: 1;
+      border: 1px solid #222;
+      border-radius: 4px;
+      background: #111;
+    }
+  </style>
 </head>
 <body>
-  <main>
-    <header>
-      <h1>Alise</h1>
-      <p class="subtitle">Seno valodu lasījumu aģents<br>
-        <span class="langs">Sengrieķu · Senebreju · Latviešu</span>
-      </p>
-    </header>
+  <header>
+    <h1>AL&amp;BL Readings</h1>
+  </header>
+  <div class="labels">
+    <span class="label-left">Diogenes — localhost:8888</span>
+    <span class="label-right">Alise — alise-1qmu.onrender.com</span>
+    <span class="label-alex">Alex — ai-connectors-hub.onrender.com</span>
+    <span class="label-toms">Toms — ai-connectors-hub-1.onrender.com</span>
+  </div>
+  <div class="frames">
 
-    <section class="card">
-      <label class="file-label" id="fileLabel">
-        <input type="file" id="fileInput" accept=".txt,.pdf" />
-        <span id="fileName">Izvēlies TXT vai PDF failu</span>
-      </label>
+    <!-- Kreisais panelis: Diogenes -->
+    <div class="panel-left">
+      <iframe src="http://localhost:8888" title="Diogenes"></iframe>
+    </div>
 
-      <button id="readBtn" disabled>▶ Lasīt</button>
+    <!-- Labais panelis: D-ID avatars + Alise -->
+    <div class="panel-right">
 
-      <div id="status" class="status hidden"></div>
+      <!-- D-ID avatars -->
+      <div class="avatar-wrap">
+        <video id="didVideo" autoplay playsinline muted></video>
+        <div id="avatarOverlay">
+          <p>Alises avatars — D-ID</p>
+          <button id="connectBtn" disabled>Savienot</button>
+        </div>
+        <div id="avatarStatus">nav savienots</div>
+      </div>
 
-      <audio id="audioPlayer" controls class="hidden"></audio>
+      <!-- Teksta izcēluma lauks -->
+      <div class="capture-wrap">
+        <div class="capture-header">
+          <span>Tekošais teksts</span>
+          <div class="capture-header-btns">
+            <button class="capture-btn" id="captureBtn" title="Nolasīt no starpliktnes">Noķert</button>
+            <button class="capture-btn" id="clearBtn" title="Notīrīt lauku">✕</button>
+          </div>
+        </div>
+        <textarea id="currentText" spellcheck="false"
+          placeholder="Atlasiet tekstu Diogenes → Ctrl+C → Noķert"></textarea>
+      </div>
 
-      <a id="downloadBtn" class="btn-download hidden" download="alise-lasijums.mp3">⬇ Lejupielādēt MP3</a>
-    </section>
+      <!-- Alises lietotāja saskarne -->
+      <div class="alise-wrap">
+        <iframe src="https://alise-1qmu.onrender.com" title="Alise"></iframe>
+      </div>
 
-    <footer>
-      <small>AL&amp;BL Readings · lingua.id.lv · Powered by ElevenLabs</small>
-    </footer>
-  </main>
+    </div>
 
-  <script src="app.js"></script>
+    <!-- Labais panelis: Alex -->
+    <div class="panel-alex">
+      <iframe src="https://ai-connectors-hub.onrender.com" title="Alex" allow="microphone"></iframe>
+    </div>
+
+    <!-- Labais panelis: Toms -->
+    <div class="panel-toms">
+      <iframe src="https://ai-connectors-hub-1.onrender.com" title="Toms" allow="microphone"></iframe>
+    </div>
+
+  </div>
+
+  <script>
+    const AGENT_ID  = 'v2_agt_H7nAQfbY';
+    const DID_API   = 'https://api.d-id.com';
+    const ALISE_SSE = 'https://alise-1qmu.onrender.com/api/events';
+
+    const video      = document.getElementById('didVideo');
+    const overlay    = document.getElementById('avatarOverlay');
+    const connectBtn = document.getElementById('connectBtn');
+    const statusEl   = document.getElementById('avatarStatus');
+
+    let DID_AUTH = null;
+    let pc = null, streamId = null, sessionId = null, eventSource = null;
+    let iceCandidateQueue = [];
+
+    // Ielādē DID_API_KEY no servera (.env)
+    fetch('https://alise-1qmu.onrender.com/api/did-config')
+      .then(r => r.json())
+      .then(({ key }) => {
+        if (!key) { setStatus('DID atslēga nav konfigurēta', 'error'); return; }
+        DID_AUTH = 'Basic ' + key;
+        connectBtn.disabled = false;
+        setStatus('nav savienots');
+      })
+      .catch(() => setStatus('Serveris nav pieejams', 'error'));
+
+    function setStatus(msg, cls = '') {
+      statusEl.textContent = msg;
+      statusEl.className = cls;
+    }
+
+    connectBtn.addEventListener('click', startAvatar);
+
+    async function startAvatar() {
+      if (!DID_AUTH) { setStatus('DID atslēga nav ielādēta', 'error'); return; }
+      connectBtn.disabled = true;
+      setStatus('Veidojas savienojums...', 'active');
+
+      try {
+        // ── FĀZE 1: Iegūst TURN serverus no D-ID ───────────────────
+        setStatus('Iegūst TURN serverus...', 'active');
+
+        // Pagaidu offer bez setLocalDescription — tikai lai iegūtu streamId
+        const tmpPc = new RTCPeerConnection({ iceServers: [] });
+        tmpPc.addTransceiver('video', { direction: 'recvonly' });
+        tmpPc.addTransceiver('audio', { direction: 'recvonly' });
+        const tmpOffer = await tmpPc.createOffer();
+        tmpPc.close();
+        console.log('[DID] Pagaidu offer izveidots (nav setLocalDescription)');
+
+        // POST uz D-ID — iegūst streamId + ice_servers
+        const initRes = await fetch(`${DID_API}/agents/${AGENT_ID}/streams`, {
+          method: 'POST',
+          headers: { 'Authorization': DID_AUTH, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offer: { type: tmpOffer.type, sdp: tmpOffer.sdp } })
+        });
+        if (!initRes.ok) throw new Error(`D-ID init: ${initRes.status} ${await initRes.text()}`);
+        const initData = await initRes.json();
+        const tmpStreamId = initData.id;
+        const tmpSessionId = initData.session_id;
+        console.log('[DID] Pagaidu stream:', tmpStreamId);
+        console.log('[DID] ICE serveri no stream atbildes:', JSON.stringify(initData.ice_servers));
+
+        // GET /ice-servers — TURN kredenciāļi
+        let turnServers = Array.isArray(initData.ice_servers) ? [...initData.ice_servers] : [];
+        try {
+          const iceRes = await fetch(
+            `${DID_API}/agents/${AGENT_ID}/streams/${tmpStreamId}/ice-servers`,
+            { headers: { 'Authorization': DID_AUTH } }
+          );
+          if (iceRes.ok) {
+            const iceData = await iceRes.json();
+            console.log('[DID] /ice-servers atbilde:', JSON.stringify(iceData));
+            const extra = iceData.ice_servers || iceData.servers
+              || (Array.isArray(iceData) ? iceData : []);
+            turnServers = [...turnServers, ...extra];
+          } else {
+            console.warn('[DID] /ice-servers:', iceRes.status, await iceRes.text());
+          }
+        } catch (e) {
+          console.warn('[DID] /ice-servers kļūda:', e.message);
+        }
+
+        // Aizvērt pagaidu streamu (fire-and-forget)
+        fetch(`${DID_API}/agents/${AGENT_ID}/streams/${tmpStreamId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': DID_AUTH, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: tmpSessionId }),
+          keepalive: true
+        }).catch(() => {});
+
+        const iceServers = [
+          { urls: 'stun:stun.l.google.com:19302' },
+          ...turnServers
+        ];
+        console.log('[DID] Galīgā ICE konfigurācija:', iceServers.length, 'serveri',
+          JSON.stringify(iceServers));
+
+        // ── FĀZE 2: Reālais RTCPeerConnection AR TURN no paša sākuma ─
+        setStatus('Veido WebRTC savienojumu...', 'active');
+
+        // Izveido jaunu PC ar TURN serveriem jau konstruktorā
+        pc = new RTCPeerConnection({ iceServers });
+        console.log('[DID] RTCPeerConnection ar TURN izveidota');
+
+        // Visi event handleri
+        pc.ontrack = (e) => {
+          console.log('[DID] ontrack:', e.track.kind,
+            'streams:', e.streams.length,
+            'readyState:', e.track.readyState);
+          const stream = e.streams && e.streams[0];
+          if (!stream) { console.warn('[DID] ontrack — nav stream'); return; }
+          console.log('[DID] stream.active:', stream.active,
+            'videoTracks:', stream.getVideoTracks().length,
+            'audioTracks:', stream.getAudioTracks().length);
+          if (video.srcObject !== stream) {
+            video.srcObject = stream;
+            video.play().catch(err => console.warn('[DID] video.play():', err));
+          }
+          overlay.style.display = 'none';
+          setStatus('aktīvs', 'active');
+        };
+
+        pc.onicecandidate = ({ candidate }) => {
+          if (!candidate) {
+            console.log('[DID] ICE gathering pabeigts, rindā:', iceCandidateQueue.length);
+            return;
+          }
+          console.log('[DID] onicecandidate:', candidate.candidate);
+          if (!streamId || !sessionId) {
+            iceCandidateQueue.push(candidate);
+            console.log('[DID] Kandidāts rindā (' + iceCandidateQueue.length + ')');
+            return;
+          }
+          sendIceCandidate(candidate);
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          console.log('[DID] iceConnectionState:', pc.iceConnectionState);
+          if (pc.iceConnectionState === 'failed') {
+            console.error('[DID] ICE neizdevās');
+            setStatus('ICE kļūda', 'error');
+          }
+        };
+
+        pc.onicegatheringstatechange = () =>
+          console.log('[DID] iceGatheringState:', pc.iceGatheringState);
+
+        pc.onsignalingstatechange = () =>
+          console.log('[DID] signalingState:', pc.signalingState);
+
+        pc.onnegotiationneeded = () =>
+          console.log('[DID] onnegotiationneeded');
+
+        pc.onconnectionstatechange = () => {
+          console.log('[DID] connectionState:', pc.connectionState);
+          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            setStatus('savienojums zaudēts', 'error');
+            overlay.style.display = 'flex';
+            connectBtn.disabled = false;
+          }
+        };
+
+        // Izveido reālo offer ar jauno PC
+        console.log('[DID] PC pirms addTransceiver — signalingState:', pc.signalingState,
+          '| iceGatheringState:', pc.iceGatheringState,
+          '| connectionState:', pc.connectionState,
+          '| pc === null?', pc === null);
+
+        pc.addTransceiver('video', { direction: 'recvonly' });
+        pc.addTransceiver('audio', { direction: 'recvonly' });
+        console.log('[DID] addTransceiver izsaukts, senders:', pc.getSenders().length,
+          'receivers:', pc.getReceivers().length);
+
+        console.log('[DID] Izsauc createOffer...');
+        const offer = await pc.createOffer();
+        console.log('[DID] createOffer pabeigts — offer.type:', offer.type,
+          '| sdp garums:', offer.sdp?.length,
+          '| pc.signalingState pēc createOffer:', pc.signalingState);
+
+        console.log('[DID] Izsauc setLocalDescription...');
+        await pc.setLocalDescription(offer);
+        console.log('[DID] setLocalDescription pabeigts — signalingState:', pc.signalingState,
+          '| iceGatheringState:', pc.iceGatheringState);
+
+        // POST uz D-ID ar reālo offer
+        const res = await fetch(`${DID_API}/agents/${AGENT_ID}/streams`, {
+          method: 'POST',
+          headers: { 'Authorization': DID_AUTH, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offer: { type: offer.type, sdp: offer.sdp } })
+        });
+        if (!res.ok) throw new Error(`D-ID stream: ${res.status} ${await res.text()}`);
+
+        const data = await res.json();
+        streamId  = data.id;
+        sessionId = data.session_id;
+        console.log('[DID] Reālais stream:', streamId, '| session:', sessionId);
+        console.log('[DID] D-ID atbilde:', JSON.stringify(data, null, 2));
+
+        // Izsūtīt rindā sagaidītos ICE kandidātus
+        if (iceCandidateQueue.length) {
+          console.log('[DID] Izsūta', iceCandidateQueue.length, 'rindā sagaidītos kandidātus');
+          for (const c of iceCandidateQueue) await sendIceCandidate(c);
+          iceCandidateQueue = [];
+        }
+
+        // Iestata SDP atbildi
+        const remoteSdp = data.sdp || data.offer;
+        console.log('[DID] RemoteDescription type:', remoteSdp?.type);
+        await pc.setRemoteDescription(new RTCSessionDescription(remoteSdp));
+        console.log('[DID] RemoteDescription iestatīts — signaling pabeigts');
+
+        startSSE();
+
+      } catch (err) {
+        console.error(err);
+        setStatus(`Kļūda: ${err.message}`, 'error');
+        connectBtn.disabled = false;
+        if (pc) { pc.close(); pc = null; }
+      }
+    }
+
+    // ── ICE kandidātu sūtīšana uz D-ID ────────────────────────────
+    async function sendIceCandidate(candidate) {
+      const body = {
+        candidate: candidate.candidate,
+        sdpMid: candidate.sdpMid,
+        sdpMLineIndex: candidate.sdpMLineIndex,
+        session_id: sessionId
+      };
+      console.log('[DID] Sūta ICE kandidātu:', body);
+      const r = await fetch(`${DID_API}/agents/${AGENT_ID}/streams/${streamId}/ice`, {
+        method: 'POST',
+        headers: { 'Authorization': DID_AUTH, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) console.warn('[DID] ICE kļūda:', r.status, await r.text());
+      else console.log('[DID] ICE kandidāts nosūtīts OK');
+    }
+
+    // ── Teksta izcēluma noķeršana ──────────────────────────────────
+    const currentText = document.getElementById('currentText');
+    const captureBtn  = document.getElementById('captureBtn');
+    const clearBtn    = document.getElementById('clearBtn');
+
+    const aliseFrame = document.querySelector('.alise-wrap iframe');
+    const alexFrame  = document.querySelector('.panel-alex iframe');
+    const tomsFrame  = document.querySelector('.panel-toms iframe');
+
+    function setCapture(text) {
+      if (!text || !text.trim()) return;
+      currentText.value = text.trim();
+      currentText.classList.add('flash');
+      setTimeout(() => currentText.classList.remove('flash'), 400);
+      broadcastCurrentText(text.trim());
+    }
+
+    function broadcastCurrentText(text) {
+      aliseFrame?.contentWindow?.postMessage(
+        { type: 'currentText', value: text }, 'https://alise-1qmu.onrender.com'
+      );
+      alexFrame?.contentWindow?.postMessage(
+        { type: 'currentText', value: text }, 'https://ai-connectors-hub.onrender.com'
+      );
+      tomsFrame?.contentWindow?.postMessage(
+        { type: 'currentText', value: text }, 'https://ai-connectors-hub-1.onrender.com'
+      );
+    }
+
+    // Arī manuālas labošanas gadījumā
+    currentText.addEventListener('input', () => {
+      broadcastCurrentText(currentText.value);
+    });
+
+    // 1. "Noķert" poga — lasa starpliktni (pieprasa clipboard-read atļauju)
+    captureBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        setCapture(text);
+      } catch {
+        captureBtn.textContent = 'Nav atļaujas';
+        setTimeout(() => { captureBtn.textContent = 'Noķert'; }, 2000);
+      }
+    });
+
+    // 2. Notīrīt
+    clearBtn.addEventListener('click', () => { currentText.value = ''; });
+
+    // 3. Paste jebkur lapā → aizpilda lauku
+    document.addEventListener('paste', (e) => {
+      const text = e.clipboardData?.getData('text/plain');
+      if (text) {
+        e.preventDefault();
+        setCapture(text);
+      }
+    });
+
+    // 4. Mouseup uz galvenā dokumenta → ķer selektētu tekstu ārpus iframe
+    document.addEventListener('mouseup', () => {
+      const sel = window.getSelection()?.toString().trim();
+      if (sel) setCapture(sel);
+    });
+
+    // 5. postMessage no Diogenes (ja localhost:8888 pievieno postMessage atbalstu)
+    window.addEventListener('message', (e) => {
+      if (e.origin !== 'http://localhost:8888') return;
+      const text = typeof e.data === 'string' ? e.data : e.data?.selectedText;
+      if (text) setCapture(text);
+    });
+
+    // ── SSE: klausās kad Alise runā ─────────────────────────────────
+    function startSSE() {
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource(ALISE_SSE);
+
+      eventSource.addEventListener('alise-speaking', async (e) => {
+        const { text, audioBase64 } = JSON.parse(e.data);
+        if (!streamId) return;
+        if (audioBase64) {
+          await sendAudioClip(audioBase64);
+        } else if (text) {
+          await sendClip(text);
+        }
+      });
+
+      eventSource.onerror = () => {
+        setStatus('aktīvs (Alise nav savienota)', 'active');
+      };
+    }
+
+    // ── Nosūta ElevenLabs audio uz D-ID caur servera proxy ─────────
+    async function sendAudioClip(audioBase64) {
+      if (!streamId || !sessionId) return;
+      setStatus('Alise runā...', 'speaking');
+      try {
+        const res = await fetch('https://alise-1qmu.onrender.com/api/did-clip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, audioBase64 })
+        });
+        if (!res.ok) console.warn('Audio clip kļūda:', res.status, await res.text());
+        setTimeout(() => setStatus('aktīvs', 'active'), 4000);
+      } catch (err) {
+        console.warn('sendAudioClip:', err);
+      }
+    }
+
+    // ── Teksta fallback caur proxy (ja nav audio) ───────────────────
+    async function sendClip(text) {
+      if (!streamId || !sessionId) return;
+      setStatus('Alise runā...', 'speaking');
+      try {
+        const res = await fetch('https://alise-1qmu.onrender.com/api/did-clip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, text })
+        });
+        if (!res.ok) console.warn('Clip kļūda:', res.status, await res.text());
+        setTimeout(() => setStatus('aktīvs', 'active'), 3000);
+      } catch (err) {
+        console.warn('sendClip:', err);
+      }
+    }
+
+    // Aiztīra pie aizvēršanas
+    window.addEventListener('beforeunload', () => {
+      if (eventSource) eventSource.close();
+      if (pc && streamId) {
+        fetch(`${DID_API}/agents/${AGENT_ID}/streams/${streamId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': DID_AUTH, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId }),
+          keepalive: true
+        });
+      }
+    });
+  </script>
 </body>
 </html>
