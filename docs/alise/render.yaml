@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: alise
+    runtime: node
+    rootDir: docs/alise
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: GOOGLE_TTS_API_KEY
+        sync: false
+      - key: DID_API_KEY
+        sync: false
