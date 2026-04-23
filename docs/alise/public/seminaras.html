@@ -239,9 +239,9 @@
   </header>
   <div class="labels">
     <span class="label-left">Diogenes — localhost:8888</span>
-    <span class="label-right">Alise — alise-1qmu.onrender.com</span>
-    <span class="label-alex">Alex — ai-connectors-hub.onrender.com</span>
-    <span class="label-toms">Toms — ai-connectors-hub-1.onrender.com</span>
+    <span class="label-right">Alise — localhost:3000</span>
+    <span class="label-alex">Alex — localhost:3001</span>
+    <span class="label-toms">Toms — localhost:3002</span>
   </div>
   <div class="frames">
 
@@ -298,7 +298,7 @@
   <script>
     const AGENT_ID  = 'v2_agt_H7nAQfbY';
     const DID_API   = 'https://api.d-id.com';
-    const ALISE_SSE = 'https://alise-1qmu.onrender.com/api/events';
+    const ALISE_SSE = 'http://localhost:3000/api/events';
 
     const video      = document.getElementById('didVideo');
     const overlay    = document.getElementById('avatarOverlay');
@@ -310,7 +310,7 @@
     let iceCandidateQueue = [];
 
     // Ielādē DID_API_KEY no servera (.env)
-    fetch('https://alise-1qmu.onrender.com/api/did-config')
+    fetch('http://localhost:3000/api/did-config')
       .then(r => r.json())
       .then(({ key }) => {
         if (!key) { setStatus('DID atslēga nav konfigurēta', 'error'); return; }
@@ -553,13 +553,13 @@
 
     function broadcastCurrentText(text) {
       aliseFrame?.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, 'https://alise-1qmu.onrender.com'
+        { type: 'currentText', value: text }, 'http://localhost:3000'
       );
       alexFrame?.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, 'https://ai-connectors-hub.onrender.com'
+        { type: 'currentText', value: text }, 'http://localhost:3001'
       );
       tomsFrame?.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, 'https://ai-connectors-hub-1.onrender.com'
+        { type: 'currentText', value: text }, 'http://localhost:3002'
       );
     }
 
@@ -629,7 +629,7 @@
       if (!streamId || !sessionId) return;
       setStatus('Alise runā...', 'speaking');
       try {
-        const res = await fetch('https://alise-1qmu.onrender.com/api/did-clip', {
+        const res = await fetch('http://localhost:3000/api/did-clip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, audioBase64 })
@@ -646,7 +646,7 @@
       if (!streamId || !sessionId) return;
       setStatus('Alise runā...', 'speaking');
       try {
-        const res = await fetch('https://alise-1qmu.onrender.com/api/did-clip', {
+        const res = await fetch('http://localhost:3000/api/did-clip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, text })

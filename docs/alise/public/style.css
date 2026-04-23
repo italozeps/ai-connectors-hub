@@ -46,7 +46,7 @@ h1 {
 }
 
 .card {
-  background: #16213e;
+  background: #162138;
   border: 1px solid #2a2a4a;
   border-radius: 12px;
   padding: 2rem;
@@ -55,7 +55,6 @@ h1 {
   gap: 1.2rem;
 }
 
-/* Faila ievade */
 input[type="file"] {
   display: none;
 }
@@ -85,7 +84,6 @@ input[type="file"] {
   color: #a09080;
 }
 
-/* Poga */
 button {
   background: #c9a84c;
   color: #1a1a2e;
@@ -117,7 +115,6 @@ button.loading {
   cursor: wait;
 }
 
-/* Statuss */
 .status {
   font-size: 0.9rem;
   padding: 0.6rem 1rem;
@@ -125,14 +122,99 @@ button.loading {
   text-align: center;
 }
 
-.status.info { background: rgba(74, 114, 200, 0.15); color: #7aacf0; }
-.status.error { background: rgba(200, 74, 74, 0.15); color: #f07a7a; }
+.status.info    { background: rgba(74, 114, 200, 0.15); color: #7aacf0; }
+.status.error   { background: rgba(200, 74, 74, 0.15);  color: #f07a7a; }
 .status.success { background: rgba(74, 154, 106, 0.15); color: #7acf9a; }
 .hidden { display: none; }
 
 audio {
   width: 100%;
   border-radius: 6px;
+}
+
+.btn-download {
+  display: block;
+  text-align: center;
+  background: #2a4a3a;
+  color: #7acf9a;
+  border: 1px solid #3a6a4a;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-family: 'Georgia', serif;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-download:hover {
+  background: #3a6a4a;
+  transform: translateY(-1px);
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tab-btn {
+  flex: 1;
+  background: #16213e;
+  color: #a09080;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-family: 'Georgia', serif;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  font-weight: normal;
+}
+
+.tab-btn.active {
+  background: #c9a84c;
+  color: #1a1a2e;
+  border-color: #c9a84c;
+  font-weight: bold;
+}
+
+.tab-btn:hover:not(.active) {
+  background: #1e2a4a;
+  color: #e8e0d0;
+}
+
+.mic-hint {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #a09080;
+  line-height: 1.6;
+}
+
+.mic-hint strong {
+  color: #c9a84c;
+  letter-spacing: 0.08em;
+}
+
+#micBtn.mic-on {
+  background: #6a2a2a;
+  color: #f09090;
+}
+
+#micBtn.mic-on:hover {
+  background: #8a3a3a;
+}
+
+.transcript {
+  background: #0e1628;
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: #c0b090;
+  min-height: 2.5rem;
+  font-style: italic;
+  line-height: 1.5;
 }
 
 footer {

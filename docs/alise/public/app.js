@@ -1,7 +1,8 @@
 // Tekošais teksts no seminaras.html (caur postMessage)
 let currentTextContext = '';
 window.addEventListener('message', (e) => {
-  if (e.origin !== window.location.origin) return;
+  const allowed = [window.location.origin, 'http://localhost:8888', 'null'];
+  if (!allowed.includes(e.origin)) return;
   if (e.data?.type === 'currentText') currentTextContext = e.data.value || '';
 });
 
