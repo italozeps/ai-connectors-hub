@@ -298,8 +298,7 @@
   <script>
     const AGENT_ID  = 'v2_agt_H7nAQfbY';
     const DID_API   = 'https://api.d-id.com';
-    const ALISE_URL = document.querySelector('.alise-wrap iframe').src.replace(/\/$/, '');
-    const ALISE_SSE = ALISE_URL + '/api/events';
+    const ALISE_SSE = 'http://localhost:3000/api/events';
 
     const video      = document.getElementById('didVideo');
     const overlay    = document.getElementById('avatarOverlay');
@@ -311,7 +310,7 @@
     let iceCandidateQueue = [];
 
     // Ielādē DID_API_KEY no servera (.env)
-    fetch(ALISE_URL + '/api/did-config')
+    fetch('http://localhost:3000/api/did-config')
       .then(r => r.json())
       .then(({ key }) => {
         if (!key) { setStatus('DID atslēga nav konfigurēta', 'error'); return; }
@@ -552,19 +551,15 @@
       broadcastCurrentText(text.trim());
     }
 
-    function frameOrigin(frame) {
-      try { return new URL(frame.src).origin; } catch { return '*'; }
-    }
-
     function broadcastCurrentText(text) {
-      if (aliseFrame) aliseFrame.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, frameOrigin(aliseFrame)
+      aliseFrame?.contentWindow?.postMessage(
+        { type: 'currentText', value: text }, 'http://localhost:3000'
       );
-      if (alexFrame) alexFrame.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, frameOrigin(alexFrame)
+      alexFrame?.contentWindow?.postMessage(
+        { type: 'currentText', value: text }, 'http://localhost:3001'
       );
-      if (tomsFrame) tomsFrame.contentWindow?.postMessage(
-        { type: 'currentText', value: text }, frameOrigin(tomsFrame)
+      tomsFrame?.contentWindow?.postMessage(
+        { type: 'currentText', value: text }, 'http://localhost:3002'
       );
     }
 
@@ -634,7 +629,7 @@
       if (!streamId || !sessionId) return;
       setStatus('Alise runā...', 'speaking');
       try {
-        const res = await fetch(ALISE_URL + '/api/did-clip', {
+        const res = await fetch('http://localhost:3000/api/did-clip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, audioBase64 })
@@ -651,7 +646,7 @@
       if (!streamId || !sessionId) return;
       setStatus('Alise runā...', 'speaking');
       try {
-        const res = await fetch(ALISE_URL + '/api/did-clip', {
+        const res = await fetch('http://localhost:3000/api/did-clip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId: AGENT_ID, streamId, sessionId, text })
