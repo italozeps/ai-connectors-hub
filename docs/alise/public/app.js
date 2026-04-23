@@ -131,26 +131,20 @@ function startMic() {
 
   recognition = new SR();
   recognition.lang = 'lv-LV';
-  recognition.continuous = true;
+  recognition.continuous = false;
   recognition.interimResults = true;
 
   recognition.onresult = onSpeechResult;
 
-  recognition.onspeechstart = () => {
-    if (micState === 'speaking') {
-      micAudio.pause();
-      micAudio.src = '';
-      micState = 'listening';
-      setMicStatus('Klausos... (saki "Alise")', 'info');
-    }
-  };
-
   recognition.onend = () => {
-    if (micActive) recognition.start();
+    if (micActive && micState !== 'processing') {
+      try { recognition.start(); } catch (e) {}
+    }
   };
 
   recognition.onerror = (e) => {
     if (e.error === 'no-speech' || e.error === 'aborted') return;
+    console.error('[Alise] recognition kļūda:', e.error);
     setMicStatus(`Mikrofona kļūda: ${e.error}`, 'error');
   };
 
@@ -195,10 +189,12 @@ function onSpeechResult(event) {
 
   const display = (final || interim).trim();
   micTranscript.textContent = display;
+  console.log('[Alise] SpeechResult interim:', interim, '| final:', final, '| state:', micState);
 
   if (!final) return;
 
   const text = final.trim().toLowerCase();
+  console.log('[Alise] Final teksts:', text);
 
   if (micState === 'listening') {
     const afterWake = extractAfterWakeWord(text);
@@ -232,8 +228,10 @@ function extractAfterWakeWord(text) {
 
 async function askClaude(question) {
   micState = 'processing';
+  if (recognition) { try { recognition.abort(); } catch (e) {} }
   setMicStatus('Domā...', 'info');
   micTranscript.textContent = question;
+  console.log('[Alise] askClaude:', question);
 
   try {
     const response = await fetch('/api/ask', {
@@ -242,25 +240,30 @@ async function askClaude(question) {
       body: JSON.stringify({ text: question, currentText: currentTextContext }),
     });
 
+    console.log('[Alise] /api/ask atbilde:', response.status, response.headers.get('Content-Type'));
+
     if (!response.ok) {
       const err = await response.json();
       throw new Error(err.error || 'Servera kļūda');
     }
 
     const blob = await response.blob();
+    console.log('[Alise] Audio blob:', blob.size, 'bytes, type:', blob.type);
     const url = URL.createObjectURL(blob);
 
     micAudio.src = url;
     micState = 'speaking';
     setMicStatus('Alise runā...', 'success');
-    micAudio.play();
+    micAudio.play().catch(e => console.error('[Alise] play() kļūda:', e));
 
     micAudio.onended = () => {
       micState = 'listening';
       setMicStatus('Klausos... (saki "Alise")', 'info');
       micTranscript.textContent = '';
+      if (micActive) { try { recognition.start(); } catch (e) {} }
     };
   } catch (err) {
+    console.error('[Alise] askClaude kļūda:', err);
     setMicStatus(`Kļūda: ${err.message}`, 'error');
     micState = 'listening';
   }
