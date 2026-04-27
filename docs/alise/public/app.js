@@ -1,5 +1,6 @@
 // Tekošais teksts no seminaras.html (caur postMessage)
 let currentTextContext = '';
+
 window.addEventListener('message', (e) => {
   const allowed = [window.location.origin, 'http://localhost:8888', 'null'];
   if (!allowed.includes(e.origin)) return;
@@ -95,6 +96,7 @@ tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     tabBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+
     if (btn.dataset.mode === 'a') {
       modeA.classList.remove('hidden');
       modeB.classList.add('hidden');
@@ -106,6 +108,7 @@ tabBtns.forEach(btn => {
   });
 });
 
+// Plašāks variants, jo pārlūks "Alise" bieži atpazīst dažādi
 const WAKE_WORDS = [
   'alise',
   'alīze',
@@ -120,7 +123,6 @@ const WAKE_WORDS = [
 let recognition = null;
 let micActive = false;
 let micState = 'idle'; // idle | listening | question | processing | speaking
-let collectQuestion = false;
 let micAudio = new Audio();
 
 micBtn.addEventListener('click', () => {
@@ -133,6 +135,7 @@ micBtn.addEventListener('click', () => {
 
 function startMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
   if (!SR) {
     setMicStatus('Pārlūks neatbalsta mikrofonu. Izmanto Chrome.', 'error');
     return;
@@ -150,26 +153,41 @@ function startMic() {
       micAudio.pause();
       micAudio.src = '';
       micState = 'listening';
-      setMicStatus('Klausos... (saki "Alise")', 'info');
+      setMicStatus('Klausos... saki “Alise”', 'info');
     }
   };
 
   recognition.onend = () => {
-    if (micActive) recognition.start();
+    if (micActive && recognition) {
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn('Recognition restart error:', e);
+      }
+    }
   };
 
   recognition.onerror = (e) => {
+    console.warn('Mikrofona kļūda:', e.error);
+
     if (e.error === 'no-speech' || e.error === 'aborted') return;
+
     setMicStatus(`Mikrofona kļūda: ${e.error}`, 'error');
   };
 
   micActive = true;
   micState = 'listening';
-  recognition.start();
+
+  try {
+    recognition.start();
+  } catch (e) {
+    console.warn('Recognition start error:', e);
+  }
 
   micBtn.textContent = '◼ Apturēt mikrofonu';
   micBtn.classList.add('mic-on');
-  setMicStatus('Klausos... (saki "Alise")', 'info');
+
+  setMicStatus('Klausos... saki “Alise”', 'info');
   micTranscript.classList.remove('hidden');
   micTranscript.textContent = '';
 }
@@ -177,74 +195,87 @@ function startMic() {
 function stopMic() {
   micActive = false;
   micState = 'idle';
+
   if (recognition) {
-    recognition.abort();
+    try {
+      recognition.abort();
+    } catch (e) {
+      console.warn('Recognition abort error:', e);
+    }
     recognition = null;
   }
+
   micAudio.pause();
   micAudio.src = '';
+
   micBtn.textContent = '⬤ Aktivizēt mikrofonu';
   micBtn.classList.remove('mic-on');
+
   setMicStatus('', 'hidden');
   micTranscript.classList.add('hidden');
 }
 
+// GALVENAIS LABOJUMS:
+// izmantojam arī interim tekstu, ne tikai final tekstu
 function onSpeechResult(event) {
-  let interim = '';
-  let final = '';
+  let text = '';
 
   for (let i = event.resultIndex; i < event.results.length; i++) {
-    const t = event.results[i][0].transcript;
-    if (event.results[i].isFinal) {
-      final += t + ' ';
-    } else {
-      interim += t;
-    }
+    text += event.results[i][0].transcript + ' ';
   }
 
-  const display = (final || interim).trim();
-  micTranscript.textContent = display;
+  text = normalizeSpeechText(text);
 
-  if (!final) return;
+  if (!text) return;
 
-  const text = final.trim().toLowerCase();
+  micTranscript.textContent = text;
+  console.log('Dzirdēts:', text);
 
   if (micState === 'listening') {
     const afterWake = extractAfterWakeWord(text);
+
     if (afterWake !== null) {
       const question = afterWake.trim();
+
       if (question.length > 3) {
         askClaude(question);
       } else {
-        collectQuestion = true;
         micState = 'question';
-        setMicStatus('Jautā...', 'info');
+        setMicStatus('Dzirdēju “Alise”. Jautā...', 'success');
         micTranscript.textContent = '';
       }
     }
   } else if (micState === 'question') {
-    const question = final.trim();
+    const question = text.trim();
+
     if (question.length > 3) {
-      collectQuestion = false;
       askClaude(question);
     }
   }
 }
 
-function extractAfterWakeWord(text) {
-  const normalized = text
+function normalizeSpeechText(text) {
+  return text
     .toLowerCase()
     .replace(/[.,!?;:]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
+}
+
+function extractAfterWakeWord(text) {
+  const normalized = normalizeSpeechText(text);
 
   for (const w of WAKE_WORDS) {
     const idx = normalized.indexOf(w);
+
     if (idx !== -1) {
       return normalized.slice(idx + w.length).replace(/^[,\s]+/, '');
     }
   }
 
-  return nul
+  return null;
+}
+
 async function askClaude(question) {
   micState = 'processing';
   setMicStatus('Domā...', 'info');
@@ -254,7 +285,10 @@ async function askClaude(question) {
     const response = await fetch('/api/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: question, currentText: currentTextContext }),
+      body: JSON.stringify({
+        text: question,
+        currentText: currentTextContext
+      }),
     });
 
     if (!response.ok) {
@@ -268,14 +302,17 @@ async function askClaude(question) {
     micAudio.src = url;
     micState = 'speaking';
     setMicStatus('Alise runā...', 'success');
-    micAudio.play();
+
+    await micAudio.play();
 
     micAudio.onended = () => {
       micState = 'listening';
-      setMicStatus('Klausos... (saki "Alise")', 'info');
+      setMicStatus('Klausos... saki “Alise”', 'info');
       micTranscript.textContent = '';
     };
+
   } catch (err) {
+    console.error(err);
     setMicStatus(`Kļūda: ${err.message}`, 'error');
     micState = 'listening';
   }
