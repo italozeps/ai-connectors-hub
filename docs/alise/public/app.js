@@ -1,324 +1,352 @@
-// Tekošais teksts no seminaras.html (caur postMessage)
-let currentTextContext = '';
+console.log("[Alise] app.js loaded");
 
-window.addEventListener('message', (e) => {
-  const allowed = [window.location.origin, 'http://localhost:8888', 'null'];
-  if (!allowed.includes(e.origin)) return;
-  if (e.data?.type === 'currentText') currentTextContext = e.data.value || '';
-});
-
-const fileInput = document.getElementById('fileInput');
-const fileLabel = document.getElementById('fileLabel');
-const fileName = document.getElementById('fileName');
-const readBtn = document.getElementById('readBtn');
-const status = document.getElementById('status');
-const audioPlayer = document.getElementById('audioPlayer');
-const downloadBtn = document.getElementById('downloadBtn');
-
-// Faila izvēle
-fileInput.addEventListener('change', () => {
-  const file = fileInput.files[0];
-  if (file) {
-    fileName.textContent = file.name;
-    fileLabel.classList.add('has-file');
-    readBtn.disabled = false;
-    hideStatus();
-    audioPlayer.classList.add('hidden');
-    downloadBtn.classList.add('hidden');
-  }
-});
-
-// Lasīšanas poga
-readBtn.addEventListener('click', async () => {
-  const file = fileInput.files[0];
-  if (!file) return;
-
-  setStatus('Apstrādā failu...', 'info');
-  readBtn.disabled = true;
-  readBtn.classList.add('loading');
-  readBtn.textContent = '⏳ Apstrādā...';
-  audioPlayer.classList.add('hidden');
-
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch('/api/read', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Nezināma kļūda');
-    }
-
-    const audioBlob = await response.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
-
-    audioPlayer.src = audioUrl;
-    audioPlayer.classList.remove('hidden');
-    audioPlayer.play();
-
-    downloadBtn.href = audioUrl;
-    downloadBtn.download = `alise-${file.name.replace(/\.[^.]+$/, '')}.mp3`;
-    downloadBtn.classList.remove('hidden');
-
-    setStatus('Alise lasa...', 'success');
-  } catch (err) {
-    setStatus(`Kļūda: ${err.message}`, 'error');
-  } finally {
-    readBtn.disabled = false;
-    readBtn.classList.remove('loading');
-    readBtn.textContent = '▶ Lasīt';
-  }
-});
-
-function setStatus(msg, type) {
-  status.textContent = msg;
-  status.className = `status ${type}`;
+// ── Language detection ─────────────────────────────────────────────────────────
+//  Detects: Armenian (hy), Greek (el), Hebrew (he), Latvian (lv, fallback)
+function detectLanguage(text) {
+  if (!text || !text.trim()) return "lv";
+  // Armenian Unicode block: U+0530–U+058F
+  if (/[\u0530-\u058F]/.test(text)) return "hy";
+  // Greek Unicode block: U+0370–U+03FF, U+1F00–U+1FFF
+  if (/[\u0370-\u03FF\u1F00-\u1FFF]/.test(text)) return "el";
+  // Hebrew Unicode block: U+0590–U+05FF
+  if (/[\u0590-\u05FF]/.test(text)) return "he";
+  return "lv";
 }
 
-function hideStatus() {
-  status.className = 'status hidden';
-}
-
-// ========== REŽĪMS B: Mikrofons ==========
-
-const tabBtns = document.querySelectorAll('.tab-btn');
-const modeA = document.getElementById('modeA');
-const modeB = document.getElementById('modeB');
-const micBtn = document.getElementById('micBtn');
-const micStatus = document.getElementById('micStatus');
-const micTranscript = document.getElementById('micTranscript');
+// ── Tab switching ──────────────────────────────────────────────────────────────
+const tabBtns = document.querySelectorAll(".tab-btn");
+const modeA   = document.getElementById("modeA");
+const modeB   = document.getElementById("modeB");
 
 tabBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    tabBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    if (btn.dataset.mode === 'a') {
-      modeA.classList.remove('hidden');
-      modeB.classList.add('hidden');
-      stopMic();
+  btn.addEventListener("click", () => {
+    tabBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    if (btn.dataset.mode === "a") {
+      modeA.classList.remove("hidden");
+      modeB.classList.add("hidden");
     } else {
-      modeA.classList.add('hidden');
-      modeB.classList.remove('hidden');
+      modeA.classList.add("hidden");
+      modeB.classList.remove("hidden");
     }
   });
 });
 
-// Plašāks variants, jo pārlūks "Alise" bieži atpazīst dažādi
-const WAKE_WORDS = [
-  'alise',
-  'alīze',
-  'alice',
-  'elise',
-  'elīze',
-  'alis',
-  'aliz',
-  'ālise'
-];
+// ── MODE A — File reading via ElevenLabs TTS ───────────────────────────────────
+const fileInput   = document.getElementById("fileInput");
+const fileNameEl  = document.getElementById("fileName");
+const readBtn     = document.getElementById("readBtn");
+const statusEl    = document.getElementById("status");
+const audioPlayer = document.getElementById("audioPlayer");
+const downloadBtn = document.getElementById("downloadBtn");
 
-let recognition = null;
-let micActive = false;
-let micState = 'idle'; // idle | listening | question | processing | speaking
-let micAudio = new Audio();
+let currentFile = null;
 
-micBtn.addEventListener('click', () => {
-  if (micActive) {
-    stopMic();
-  } else {
-    startMic();
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  currentFile = file;
+  fileNameEl.textContent = file.name;
+  document.getElementById("fileLabel").classList.add("has-file");
+  readBtn.disabled = false;
+  setStatus("File loaded. Press ▶ Read.", "success");
+});
+
+readBtn.addEventListener("click", async () => {
+  if (!currentFile) {
+    setStatus("No file selected.", "error");
+    return;
   }
+  readBtn.disabled = true;
+  readBtn.classList.add("loading");
+  setStatus("Sending to ElevenLabs...", "info");
+  try {
+    // Peek at file text for language detection (TXT only; PDF handled server-side)
+    let detectedLang = "lv";
+    if (currentFile.type === "text/plain" || currentFile.name.endsWith(".txt")) {
+      const sample = await currentFile.slice(0, 500).text();
+      detectedLang = detectLanguage(sample);
+    }
+    const formData = new FormData();
+    formData.append("file", currentFile);
+    formData.append("lang", detectedLang);
+    const res = await fetch("/api/read", { method: "POST", body: formData });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(res.status + " " + err);
+    }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    audioPlayer.src = url;
+    audioPlayer.classList.remove("hidden");
+    audioPlayer.play();
+    downloadBtn.href = url;
+    downloadBtn.classList.remove("hidden");
+    setStatus("Reading in progress ✅", "success");
+  } catch (e) {
+    console.error("[Alise] /api/read error:", e);
+    setStatus("Error: " + e.message, "error");
+  } finally {
+    readBtn.disabled = false;
+    readBtn.classList.remove("loading");
+  }
+});
+
+function setStatus(msg, type = "info") {
+  statusEl.textContent = msg;
+  statusEl.className   = "status " + type;
+  statusEl.classList.remove("hidden");
+}
+
+// ── MODE B — Microphone agent (state machine) ──────────────────────────────────
+//
+//  States:  idle → listening → question → processing → speaking → listening
+//
+//  listening : waiting for wake word "Alise" / "Alice"
+//  question  : wake word heard, now collecting the question
+//  processing: question sent to /api/ask, waiting for response
+//  speaking  : playing ElevenLabs audio; any detected speech pauses playback
+//
+
+const micBtn        = document.getElementById("micBtn");
+const micStatusEl   = document.getElementById("micStatus");
+const micTranscript = document.getElementById("micTranscript");
+
+let recognition   = null;
+let micActive     = false;
+let restartTimer  = null;
+let state         = "idle";
+let questionBuf   = "";
+let currentAudio  = null;
+
+function setMicStatus(msg) {
+  micStatusEl.textContent = msg;
+  micStatusEl.classList.remove("hidden");
+}
+
+function setTranscript(msg) {
+  micTranscript.textContent = msg;
+  micTranscript.classList.remove("hidden");
+}
+
+micBtn.addEventListener("click", () => {
+  if (micActive) stopMic();
+  else startMic();
 });
 
 function startMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
   if (!SR) {
-    setMicStatus('Pārlūks neatbalsta mikrofonu. Izmanto Chrome.', 'error');
+    setMicStatus("Speech recognition not supported. Use Chrome.");
     return;
   }
 
-  recognition = new SR();
-  recognition.lang = 'lv-LV';
-  recognition.continuous = true;
-  recognition.interimResults = true;
-
-  recognition.onresult = onSpeechResult;
-
-  recognition.onspeechstart = () => {
-    if (micState === 'speaking') {
-      micAudio.pause();
-      micAudio.src = '';
-      micState = 'listening';
-      setMicStatus('Klausos... saki “Alise”', 'info');
-    }
-  };
-
-  recognition.onend = () => {
-    if (micActive && recognition) {
-      try {
-        recognition.start();
-      } catch (e) {
-        console.warn('Recognition restart error:', e);
-      }
-    }
-  };
-
-  recognition.onerror = (e) => {
-    console.warn('Mikrofona kļūda:', e.error);
-
-    if (e.error === 'no-speech' || e.error === 'aborted') return;
-
-    setMicStatus(`Mikrofona kļūda: ${e.error}`, 'error');
-  };
-
-  micActive = true;
-  micState = 'listening';
-
-  try {
-    recognition.start();
-  } catch (e) {
-    console.warn('Recognition start error:', e);
+  // Destroy any existing instance first
+  if (recognition) {
+    const old = recognition;
+    recognition = null;
+    old.onstart = null; old.onresult = null; old.onerror = null; old.onend = null;
+    try { old.abort(); } catch(e) {}
   }
 
-  micBtn.textContent = '◼ Apturēt mikrofonu';
-  micBtn.classList.add('mic-on');
+  micActive = true;
+  state = "listening";
+  micBtn.textContent = "⏹ Stop microphone";
+  micBtn.classList.add("mic-on");
+  setMicStatus('Listening... Say "Alise" to activate.');
 
-  setMicStatus('Klausos... saki “Alise”', 'info');
-  micTranscript.classList.remove('hidden');
-  micTranscript.textContent = '';
+  const rec = new SR();
+  // Use Latvian as primary; Armenian (hy-AM) is detected via script after transcription.
+  // Chrome picks the best match when lang is set to a BCP-47 tag; for multilingual
+  // support we set Latvian as default and rely on script detection post-recognition.
+  rec.lang = "lv-LV";
+  rec.continuous = true;
+  rec.interimResults = true;
+
+  rec.onstart = () => {
+    console.log("[Alise] Mic started, state:", state);
+  };
+
+  rec.onresult = onSpeechResult;
+
+  rec.onerror = (e) => {
+    console.warn("[Alise] Speech error:", e.error);
+    if (e.error === "not-allowed") {
+      setMicStatus("Microphone access denied. Allow it in Chrome settings.");
+      micActive = false;
+      recognition = null;
+      micBtn.textContent = "⬤ Activate microphone";
+      micBtn.classList.remove("mic-on");
+    }
+    // aborted/no-speech are harmless
+  };
+
+  rec.onend = () => {
+    if (rec !== recognition) return; // stale instance, ignore
+    if (!micActive) return;          // intentional stop
+    console.log("[Alise] Session ended — stopped (press button to restart)");
+    recognition = null;
+    micActive = false;
+    micBtn.textContent = "⬤ Activate microphone";
+    micBtn.classList.remove("mic-on");
+    setMicStatus('Microphone stopped. Press button to start again.');
+  };
+
+  recognition = rec;
+  try {
+    rec.start();
+  } catch(e) {
+    console.error("[Alise] start() failed:", e);
+    recognition = null;
+    micActive = false;
+    micBtn.textContent = "⬤ Activate microphone";
+    micBtn.classList.remove("mic-on");
+    setMicStatus("Could not start: " + e.message);
+  }
 }
 
 function stopMic() {
   micActive = false;
-  micState = 'idle';
-
-  if (recognition) {
-    try {
-      recognition.abort();
-    } catch (e) {
-      console.warn('Recognition abort error:', e);
-    }
-    recognition = null;
+  state = "idle";
+  const old = recognition;
+  recognition = null;
+  if (old) {
+    old.onstart = null; old.onresult = null; old.onerror = null; old.onend = null;
+    try { old.abort(); } catch(e) {}
   }
-
-  micAudio.pause();
-  micAudio.src = '';
-
-  micBtn.textContent = '⬤ Aktivizēt mikrofonu';
-  micBtn.classList.remove('mic-on');
-
-  setMicStatus('', 'hidden');
-  micTranscript.classList.add('hidden');
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  micBtn.textContent = "⬤ Activate microphone";
+  micBtn.classList.remove("mic-on");
+  setMicStatus("Microphone stopped.");
+  console.log("[Alise] Mic stopped");
 }
 
-// GALVENAIS LABOJUMS:
-// izmantojam arī interim tekstu, ne tikai final tekstu
 function onSpeechResult(event) {
-  let text = '';
+  let interim = "";
+  let final   = "";
 
   for (let i = event.resultIndex; i < event.results.length; i++) {
-    text += event.results[i][0].transcript + ' ';
+    const t = event.results[i][0].transcript;
+    if (event.results[i].isFinal) final   += t + " ";
+    else                           interim += t;
   }
 
-  text = normalizeSpeechText(text);
+  console.log(`[Alise] SpeechResult interim: ${interim.trim()} | final: ${final.trim()} | state: ${state}`);
 
-  if (!text) return;
+  const displayText = (final + interim).trim();
+  if (displayText) setTranscript(displayText);
 
-  micTranscript.textContent = text;
-  console.log('Dzirdēts:', text);
+  // If Alise is speaking, any detected speech pauses audio immediately
+  if (state === "speaking" && displayText.length > 2) {
+    if (currentAudio && !currentAudio.paused) {
+      currentAudio.pause();
+      setMicStatus("Paused — listening to you...");
+      console.log("[Alise] Audio paused due to speech detected");
+    }
+  }
 
-  if (micState === 'listening') {
-    const afterWake = extractAfterWakeWord(text);
+  // Only process final results for state transitions
+  if (!final.trim()) return;
 
-    if (afterWake !== null) {
-      const question = afterWake.trim();
+  const text  = final.trim();
+  const lower = text.toLowerCase();
 
-      if (question.length > 3) {
-        askClaude(question);
+  console.log("[Alise] Final text:", text);
+
+  if (state === "listening") {
+    const wakeDetected = lower.includes("alise") ||
+                         lower.includes("alice") ||
+                         lower.includes("alis");
+
+    if (wakeDetected) {
+      const afterWake = lower
+        .replace(/\balis[ea]?\b/gi, "")
+        .replace(/[,!?.]+/g, " ")
+        .trim();
+
+      if (afterWake.length > 3) {
+        // Question already in same breath as wake word
+        questionBuf = afterWake;
+        askClaude(questionBuf);
       } else {
-        micState = 'question';
-        setMicStatus('Dzirdēju “Alise”. Jautā...', 'success');
-        micTranscript.textContent = '';
+        state = "question";
+        questionBuf = "";
+        setMicStatus("Alise heard her name ✅ — ask your question.");
+        console.log("[Alise] State → question");
       }
     }
-  } else if (micState === 'question') {
-    const question = text.trim();
 
-    if (question.length > 3) {
-      askClaude(question);
+  } else if (state === "question") {
+    questionBuf += text + " ";
+    askClaude(questionBuf.trim());
+
+  } else if (state === "speaking") {
+    // User spoke — resume if paused
+    if (currentAudio && currentAudio.paused) {
+      currentAudio.play();
+      setMicStatus("Resuming...");
     }
   }
-}
-
-function normalizeSpeechText(text) {
-  return text
-    .toLowerCase()
-    .replace(/[.,!?;:]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function extractAfterWakeWord(text) {
-  const normalized = normalizeSpeechText(text);
-
-  for (const w of WAKE_WORDS) {
-    const idx = normalized.indexOf(w);
-
-    if (idx !== -1) {
-      return normalized.slice(idx + w.length).replace(/^[,\s]+/, '');
-    }
-  }
-
-  return null;
 }
 
 async function askClaude(question) {
-  micState = 'processing';
-  setMicStatus('Domā...', 'info');
-  micTranscript.textContent = question;
+  if (state === "processing") return;
+
+  state = "processing";
+  const lang = detectLanguage(question);
+  console.log("[Alise] askClaude:", question, "| lang:", lang);
+  setMicStatus("Thinking...");
+  setTranscript(question);
 
   try {
-    const response = await fetch('/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: question,
-        currentText: currentTextContext
-      }),
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: question, lang })
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Servera kļūda');
+    console.log("[Alise] /api/ask response:", res.status, res.headers.get("content-type"));
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`${res.status} ${errText}`);
     }
 
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
+    const blob     = await res.blob();
+    const audioUrl = URL.createObjectURL(blob);
 
-    micAudio.src = url;
-    micState = 'speaking';
-    setMicStatus('Alise runā...', 'success');
+    playResponse(audioUrl);
 
-    await micAudio.play();
-
-    micAudio.onended = () => {
-      micState = 'listening';
-      setMicStatus('Klausos... saki “Alise”', 'info');
-      micTranscript.textContent = '';
-    };
-
-  } catch (err) {
-    console.error(err);
-    setMicStatus(`Kļūda: ${err.message}`, 'error');
-    micState = 'listening';
+  } catch (e) {
+    console.error("[Alise] askClaude error:", e);
+    setMicStatus("Error: " + e.message);
+    state = "listening";
+    questionBuf = "";
   }
 }
 
-function setMicStatus(msg, type) {
-  micStatus.textContent = msg;
-  micStatus.className = `status ${type}`;
+function playResponse(audioUrl) {
+  state = "speaking";
+  setMicStatus("Alise is speaking...");
+  console.log("[Alise] State → speaking");
+
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+
+  currentAudio = new Audio(audioUrl);
+  currentAudio.play();
+
+  currentAudio.onended = () => {
+    console.log("[Alise] Audio ended → listening");
+    state        = "listening";
+    questionBuf  = "";
+    currentAudio = null;
+    setMicStatus('Listening... Say "Alise" to activate.');
+  };
+
+  currentAudio.onerror = (e) => {
+    console.error("[Alise] Audio playback error:", e);
+    state = "listening";
+    questionBuf = "";
+    setMicStatus("Audio error. Listening again...");
+  };
 }
